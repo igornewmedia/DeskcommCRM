@@ -100,6 +100,32 @@ proxima_tag_livre() {
   printf 'v%s.%s.%s\n' "$maj" "$min" "$pat"
 }
 
+# O fork nasce sem tag e sem release nenhuma, e parte dos testes do original
+# (scripts/conferir-isolamento-do-kit.sh, no `invariants`) compara o kit com a
+# última release DESTE repositório e com tags antigas (v1.63.0). Este passo dá
+# ao fork o histórico que ele já contém: as tags do original até a versão
+# incorporada — os MESMOS commits, sem mudança — e, se ainda não houver release
+# nenhuma, a release dessa versão (que é o original puro, com as imagens dele).
+# Idempotente. Empurrado pelo GITHUB_TOKEN, não dispara o build de imagens.
+preparar_historico_do_fork() {
+  local ate="$1" t faltam=() remotas
+  remotas="$(git ls-remote --tags origin | awk '{print $2}' | sed 's#^refs/tags/##; s#\^{}$##' | sort -u)"
+  while read -r t; do
+    printf '%s\n' "$remotas" | grep -xF "$t" >/dev/null || faltam+=("refs/upstream-tags/${t}:refs/tags/${t}")
+  done < <(git for-each-ref --format='%(refname:strip=2)' 'refs/upstream-tags/v*' \
+             | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V \
+             | awk -v ate="$ate" '!feito { print } $0 == ate { feito = 1 }')
+  if [ "${#faltam[@]}" -gt 0 ]; then
+    echo "Trazendo ${#faltam[@]} tag(s) do original (até ${ate}) para o fork."
+    git push --quiet origin "${faltam[@]}"
+  fi
+  if [ -z "$(gh release list --limit 1 --json tagName --jq '.[].tagName' 2>/dev/null)" ]; then
+    gh release create "$ate" --verify-tag --latest --title "${ate} (original, sem modificações)" \
+      --notes "Ponto de partida do fork: a versão ${ate#v} do original, idêntica. As próximas versões deste repositório trazem as modificações do fork. Ver FORK.md."
+    echo "Release inicial ${ate} criada."
+  fi
+}
+
 configurar_autor_bot() {
   git config user.name  "github-actions[bot]"
   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

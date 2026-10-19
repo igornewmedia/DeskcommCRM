@@ -74,6 +74,15 @@ e quando editar, mexa no mínimo. Migration nova segue a doutrina do original
 `supabase/baseline.sql`. A tarefa semanal avisa quando o original usar o mesmo
 número de migration que você.
 
+## Primeira execução
+
+O fork nasce sem tags e sem release, e um teste do original (`invariants`,
+via `scripts/conferir-isolamento-do-kit.sh`) compara o instalador com a última
+release **deste** repositório — então ele falha até o fork ter uma. A primeira
+execução de **Fork — sincronizar com o original** resolve isso sozinha: traz as
+tags do original até a versão incorporada (os mesmos commits) e cria a release
+inicial, que é o original puro. Rode-a uma vez, à mão, logo depois de instalar.
+
 ## Configuração única no GitHub (já feita, guardada aqui para referência)
 
 - Actions ligado no fork.

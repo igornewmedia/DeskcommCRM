@@ -27,6 +27,8 @@ buscar_original
 atual="$(versao_incorporada)"
 alvo="$(ultima_versao_original)"
 
+[ -z "$SECO" ] && preparar_historico_do_fork "$atual"
+
 echo "Versão incorporada: ${atual} | última versão do original: ${alvo}"
 if [ "$atual" = "$alvo" ]; then
   echo "Nada novo. Até a próxima semana."
