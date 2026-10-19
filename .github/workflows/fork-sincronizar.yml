@@ -19,10 +19,10 @@ concurrency:
   group: fork-sincronizar
   cancel-in-progress: false
 
+# Quem escreve é a chave FORK_TOKEN (ver o passo de conferência); o token
+# padrão do Actions só precisa ler.
 permissions:
-  contents: write        # empurrar a branch sincronizar/vX.Y.Z
-  issues: write          # abrir a tarefa
-  pull-requests: write   # abrir o PR da atualização
+  contents: read
 
 # O comentário na linha de `jobs:` é deliberado. Os testes de governança do
 # original (tests/unit/gatilho-dos-jobs-de-entrega.test.ts e irmãos) mapeiam
@@ -34,12 +34,23 @@ jobs: # fork
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Conferir a chave FORK_TOKEN
+        env:
+          FORK_TOKEN: ${{ secrets.FORK_TOKEN }}
+        run: |
+          if [ -z "$FORK_TOKEN" ]; then
+            echo "::error::Falta o segredo FORK_TOKEN. O token padrão do Actions é proibido pelo GitHub de enviar commits que mexem em .github/workflows — e as versões do original mexem. Crie a chave e cadastre o segredo: ver FORK.md, seção 'A chave FORK_TOKEN'."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
+          # O push sai com a chave do dono (FORK_TOKEN), não com o GITHUB_TOKEN.
+          token: ${{ secrets.FORK_TOKEN }}
 
       - name: Conferir o original e abrir a tarefa
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.FORK_TOKEN }}
         run: bash .fork/sincronizar.sh
