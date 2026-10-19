@@ -1,0 +1,44 @@
+name: Fork — publicar versão
+
+# Publica a versão do fork que a VPS instala: tag vX.Y.Z → build das quatro
+# imagens em ghcr.io/igornewmedia → release do GitHub (só depois das imagens).
+#
+# Dispara sozinho quando um PR de sincronização entra na main (muda
+# .fork/versao-original). Para publicar uma mudança SUA entre duas versões do
+# original: aba Actions → este workflow → "Run workflow" (sai como patch,
+# ex.: 1.86.1).
+#
+# Recusa publicar se a main carregar código do original ainda não lançado.
+# Detalhes: FORK.md
+
+on:
+  push:
+    branches: [main]
+    paths: [".fork/versao-original"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: fork-publicar
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # criar a tag e a release
+  actions: write    # disparar o publish-image.yml na tag
+
+# Comentário em `jobs:` deliberado — ver fork-sincronizar.yml e FORK.md.
+jobs: # fork
+  publicar:
+    runs-on: ubuntu-latest
+    # O build das 8 imagens (4 × amd64/arm64) leva de 15 a 25 minutos, e este
+    # job espera por ele antes de criar a release.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Tag, imagens e release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .fork/publicar.sh
