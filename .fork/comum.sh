@@ -13,6 +13,12 @@ UPSTREAM_REPO="${UPSTREAM_REPO:-melgarafael/DeskcommCRM}"
 UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/${UPSTREAM_REPO}.git}"
 ARQ_VERSAO=".fork/versao-original"
 
+# O `gh` escolhe o repositório pelos remotes do git e PREFERE o chamado
+# `upstream` — que aqui é o original. Sem isto, tarefa, PR, release e build
+# seriam pedidos ao repositório do melgarafael. Medido: na primeira execução o
+# `gh release list` leu as releases do original e a release inicial não nasceu.
+export GH_REPO="${GH_REPO:-${GITHUB_REPOSITORY:-igornewmedia/DeskcommCRM}}"
+
 # As tags do original ficam num espaço próprio (refs/upstream-tags/*), NUNCA em
 # refs/tags/*. O fork publica as próprias tags com os mesmos números; misturar
 # os dois faria `v1.86.0` significar duas coisas diferentes no mesmo repositório.
@@ -119,7 +125,11 @@ preparar_historico_do_fork() {
     echo "Trazendo ${#faltam[@]} tag(s) do original (até ${ate}) para o fork."
     git push --quiet origin "${faltam[@]}"
   fi
-  if [ -z "$(gh release list --limit 1 --json tagName --jq '.[].tagName' 2>/dev/null)" ]; then
+  # Pergunta explícita ao repositório do fork; erro da API derruba o passo em vez
+  # de virar "já tem release" em silêncio.
+  local n
+  n="$(gh api "repos/${GH_REPO}/releases?per_page=1" --jq 'length')"
+  if [ "$n" = "0" ]; then
     gh release create "$ate" --verify-tag --latest --title "${ate} (original, sem modificações)" \
       --notes "Ponto de partida do fork: a versão ${ate#v} do original, idêntica. As próximas versões deste repositório trazem as modificações do fork. Ver FORK.md."
     echo "Release inicial ${ate} criada."
