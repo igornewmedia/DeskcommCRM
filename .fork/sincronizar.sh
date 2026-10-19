@@ -15,6 +15,10 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/comum.sh"
 
 ROTULO="sincronizacao"
+
+# A tarefa é aberta pelo robô do GitHub (BOT_TOKEN = GITHUB_TOKEN) para que a
+# notificação chegue ao dono do fork; sem ele, cai na chave do dono.
+gh_bot() { GH_TOKEN="${BOT_TOKEN:-$GH_TOKEN}" gh "$@"; }
 REPO="${GITHUB_REPOSITORY:-igornewmedia/DeskcommCRM}"
 SECO="${SINCRONIZAR_SECO:-}"
 
@@ -44,7 +48,7 @@ branch="sincronizar/${alvo}"
 
 # ── Uma tarefa por vez: a mais nova substitui as antigas ─────────────────────
 if [ -z "$SECO" ]; then
-  gh label create "$ROTULO" --color 1D76DB \
+  gh_bot label create "$ROTULO" --color 1D76DB \
     --description "Atualização vinda do projeto original" --force >/dev/null 2>&1 || true
 
   if gh issue list --label "$ROTULO" --state open --json title --jq '.[].title' | grep -xF "$titulo" >/dev/null; then
@@ -53,7 +57,7 @@ if [ -z "$SECO" ]; then
   fi
   while read -r num; do
     [ -n "$num" ] || continue
-    gh issue close "$num" --comment "Substituída pela tarefa de ${alvo}, que já inclui estas mudanças." || true
+    gh_bot issue close "$num" --comment "Substituída pela tarefa de ${alvo}, que já inclui estas mudanças." || true
   done < <(gh issue list --label "$ROTULO" --state open --json number --jq '.[].number')
   while read -r num; do
     [ -n "$num" ] || continue
@@ -94,7 +98,8 @@ git checkout --quiet "$voltar_para"
 
 # ── O texto da tarefa ────────────────────────────────────────────────────────
 {
-  echo "O projeto original lançou **${alvo}**. Este fork está em **${atual}**."
+  # A menção faz a tarefa chegar como "participando", o nível mais alto de aviso.
+  echo "@${GITHUB_REPOSITORY_OWNER:-igornewmedia} o projeto original lançou **${alvo}**. Este fork está em **${atual}**."
   echo
   echo "Versões novas: ${versoes}· ${n_mudados} arquivo(s) alterado(s) no original."
   echo
@@ -174,7 +179,7 @@ if [ -n "$SECO" ]; then
   exit 0
 fi
 
-url_issue="$(gh issue create --title "$titulo" --label "$ROTULO" --body-file /tmp/tarefa.md)"
+url_issue="$(gh_bot issue create --title "$titulo" --label "$ROTULO" --body-file /tmp/tarefa.md)"
 num_issue="${url_issue##*/}"
 echo "Tarefa aberta: ${url_issue}"
 
@@ -186,6 +191,6 @@ if [ "$juncao" = "limpa" ]; then
     echo "Detalhes, novidades e pontos de atenção na tarefa: Closes #${num_issue}"
   } > /tmp/pr.md
   url_pr="$(gh pr create --base main --head "$branch" --title "$titulo" --label "$ROTULO" --body-file /tmp/pr.md)"
-  gh issue comment "$num_issue" --body "PR com a atualização: ${url_pr}"
+  gh_bot issue comment "$num_issue" --body "PR com a atualização: ${url_pr}"
   echo "PR aberto: ${url_pr}"
 fi

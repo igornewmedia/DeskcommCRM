@@ -19,10 +19,13 @@ concurrency:
   group: fork-sincronizar
   cancel-in-progress: false
 
-# Quem escreve é a chave FORK_TOKEN (ver o passo de conferência); o token
-# padrão do Actions só precisa ler.
+# Código, branch e PR saem com a chave FORK_TOKEN (ver o passo de conferência).
+# A TAREFA (Issue) sai com o token padrão, em nome de github-actions[bot]: o
+# GitHub não notifica ninguém sobre o que a própria pessoa fez, e uma Issue
+# aberta com a chave do dono não chegaria a ele nem por e-mail nem no celular.
 permissions:
   contents: read
+  issues: write   # abrir a tarefa e comentar nela como github-actions[bot]
 
 # O comentário na linha de `jobs:` é deliberado. Os testes de governança do
 # original (tests/unit/gatilho-dos-jobs-de-entrega.test.ts e irmãos) mapeiam
@@ -53,4 +56,5 @@ jobs: # fork
       - name: Conferir o original e abrir a tarefa
         env:
           GH_TOKEN: ${{ secrets.FORK_TOKEN }}
+          BOT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash .fork/sincronizar.sh
