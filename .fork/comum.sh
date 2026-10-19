@@ -112,7 +112,8 @@ proxima_tag_livre() {
 # ao fork o histórico que ele já contém: as tags do original até a versão
 # incorporada — os MESMOS commits, sem mudança — e, se ainda não houver release
 # nenhuma, a release dessa versão (que é o original puro, com as imagens dele).
-# Idempotente. Empurrado pelo GITHUB_TOKEN, não dispara o build de imagens.
+# Idempotente. Mais de 3 tags num push não disparam workflows (regra do
+# GitHub), então trazer o histórico não dispara o build de imagens.
 preparar_historico_do_fork() {
   local ate="$1" t faltam=() remotas
   remotas="$(git ls-remote --tags origin | awk '{print $2}' | sed 's#^refs/tags/##; s#\^{}$##' | sort -u)"
