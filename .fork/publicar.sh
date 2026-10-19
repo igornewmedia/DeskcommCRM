@@ -84,20 +84,27 @@ if [ -z "$retomando" ]; then
   git push origin "refs/tags/${tag}"
 fi
 
-# Tag empurrada pelo GITHUB_TOKEN não dispara outros workflows (regra do
-# GitHub contra laços). O build das imagens é disparado explicitamente.
-inicio="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-gh workflow run publish-image.yml --ref "$tag"
-
-# A RELEASE só nasce depois das imagens: é ela que o update.sh da VPS enxerga,
-# e release sem imagem publicada faria a VPS tentar baixar o que não existe.
+# A tag empurrada com a FORK_TOKEN dispara o publish-image.yml sozinha (push de
+# tag). Se o build não aparecer — ex.: execução retomada, tag já existia —, ele
+# é disparado à mão.
+inicio="$(date -u -d '-1 minute' +%Y-%m-%dT%H:%M:%SZ)"
+achar_build() {
+  gh run list --workflow publish-image.yml --branch "$tag" --limit 5 \
+    --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"${inicio}\")][0].databaseId // empty"
+}
 run_id=""
-for _ in $(seq 1 30); do
-  run_id="$(gh run list --workflow publish-image.yml --event workflow_dispatch --branch "$tag" \
-    --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"${inicio}\")][0].databaseId // empty")"
-  [ -n "$run_id" ] && break
+for _ in $(seq 1 12); do
+  run_id="$(achar_build)"; [ -n "$run_id" ] && break
   sleep 10
 done
+if [ -z "$run_id" ]; then
+  echo "O build não começou sozinho; disparando."
+  gh workflow run publish-image.yml --ref "$tag"
+  for _ in $(seq 1 18); do
+    run_id="$(achar_build)"; [ -n "$run_id" ] && break
+    sleep 10
+  done
+fi
 [ -n "$run_id" ] || { echo "::error::Não achei o build das imagens de ${tag}. A tag existe, a release NÃO foi criada."; exit 1; }
 
 echo "Aguardando o build das imagens (run ${run_id}) — leva uns 15 a 25 minutos."

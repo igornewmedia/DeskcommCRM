@@ -22,8 +22,8 @@ toda segunda 08:17 ──► o original lançou versão nova?
             │                      ele junta, testa e abre o PR
             └──────────────┬───────────────┘
                            ▼
-              você fecha/reabre o PR (dispara os testes),
-              confere e aprova o merge
+              os testes rodam no PR;
+              você confere e aprova o merge
                            ▼
           publica sozinho: tag → imagens → release
                            ▼
@@ -82,6 +82,28 @@ release **deste** repositório — então ele falha até o fork ter uma. A prime
 execução de **Fork — sincronizar com o original** resolve isso sozinha: traz as
 tags do original até a versão incorporada (os mesmos commits) e cria a release
 inicial, que é o original puro. Rode-a uma vez, à mão, logo depois de instalar.
+
+## A chave FORK_TOKEN
+
+O GitHub proíbe o token padrão do Actions (`GITHUB_TOKEN`) de enviar commits ou
+tags que mexem em `.github/workflows` — e as versões do original mexem. Por isso
+as duas automações do fork escrevem com uma chave do dono do repositório,
+guardada no segredo `FORK_TOKEN`. De quebra, PR e tag enviados com ela disparam
+os testes e o build sozinhos.
+
+Para criar (ou renovar quando vencer):
+
+1. github.com → foto → **Settings** → **Developer settings** → **Personal access tokens**
+   → **Fine-grained tokens** → **Generate new token**.
+2. Nome: `deskcomm-fork`. Validade: a mais longa que aparecer (anote para renovar).
+3. **Repository access** → *Only select repositories* → `igornewmedia/DeskcommCRM`.
+4. **Permissions** → *Repository permissions*, todas em **Read and write**:
+   `Actions`, `Contents`, `Issues`, `Pull requests`, `Workflows`.
+5. **Generate token** e copie a chave (ela aparece uma vez só).
+6. No repositório: **Settings** → **Secrets and variables** → **Actions** →
+   **New repository secret** → nome `FORK_TOKEN`, valor = a chave → **Add secret**.
+
+Sem o segredo, as automações param no primeiro passo com uma mensagem dizendo isso.
 
 ## Configuração única no GitHub (já feita, guardada aqui para referência)
 

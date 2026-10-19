@@ -104,8 +104,8 @@ git checkout --quiet "$voltar_para"
     echo "O PR com a atualização já está aberto (link abaixo). Para concluir:"
     echo
     echo "1. Leia as novidades abaixo e confira os pontos de atenção."
-    echo "2. No PR, **feche e reabra** uma vez: é isso que dispara os testes (PR aberto por automação não dispara os testes sozinho — regra do GitHub)."
-    echo "3. Com os testes verdes, aprove o merge. A versão nova do fork é publicada sozinha em seguida."
+    echo "2. Espere os testes do PR terminarem (uns 30 minutos) e, com eles verdes, aprove o merge."
+    echo "3. A versão nova do fork é publicada sozinha em seguida (mais uns 20 minutos, para as imagens)."
     echo "4. Quando a release aparecer, atualize a VPS: \`bash hostgator-setup-kit/update.sh\`."
   else
     echo "### ⚠️ A junção tem conflito — precisa de uma mão"
@@ -184,8 +184,6 @@ if [ "$juncao" = "limpa" ]; then
     echo "Incorpora **${alvo}** do original, preservando as modificações deste fork."
     echo
     echo "Detalhes, novidades e pontos de atenção na tarefa: Closes #${num_issue}"
-    echo
-    echo "**Feche e reabra este PR uma vez** para disparar os testes antes de aprovar."
   } > /tmp/pr.md
   url_pr="$(gh pr create --base main --head "$branch" --title "$titulo" --label "$ROTULO" --body-file /tmp/pr.md)"
   gh issue comment "$num_issue" --body "PR com a atualização: ${url_pr}"
