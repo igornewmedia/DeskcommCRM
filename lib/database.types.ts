@@ -8668,6 +8668,7 @@ export type Database = {
       platform_branding: {
         Row: {
           accent_dark_hex: string | null
+          dark_bg_hex: string | null
           accent_hex: string | null
           app_name: string | null
           fallback_at: string | null
@@ -8682,6 +8683,7 @@ export type Database = {
         }
         Insert: {
           accent_dark_hex?: string | null
+          dark_bg_hex?: string | null
           accent_hex?: string | null
           app_name?: string | null
           fallback_at?: string | null
@@ -8696,6 +8698,7 @@ export type Database = {
         }
         Update: {
           accent_dark_hex?: string | null
+          dark_bg_hex?: string | null
           accent_hex?: string | null
           app_name?: string | null
           fallback_at?: string | null

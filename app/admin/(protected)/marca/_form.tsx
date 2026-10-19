@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cssDaMarca } from "@/lib/branding/css";
+import { fundoEscuroLegivel } from "@/lib/branding/fundo-escuro";
 import { ehHexValido, K, normalizarHex } from "@/lib/branding/rampa";
 import { REGUA_DO_PRODUTO } from "@/lib/branding/regua-do-produto";
 import { resolverMarca } from "@/lib/branding/resolve";
@@ -36,6 +37,8 @@ export interface MarcaGravada {
   readonly accent_hex: string | null;
   /** A cor do TEMA ESCURO (#2482) — o par; `null` = só a cor acima pinta. */
   readonly accent_dark_hex: string | null;
+  /** O FUNDO do tema escuro (migration 0704); `null` = o de fábrica. */
+  readonly dark_bg_hex: string | null;
   readonly show_powered_by: boolean;
 }
 
@@ -71,6 +74,8 @@ const ERRO_EM_PORTUGUES: Record<string, string> = {
 
 /** Cinza médio para o seletor visual quando o campo ainda não tem cor válida. */
 const COR_NEUTRA_DO_SELETOR = "#808080";
+/** O `--color-bg` do `[data-theme="dark"]` de `app/globals.css`. */
+const FUNDO_ESCURO_DE_FABRICA = "#161510";
 
 export function FormularioDaMarca({
   gravada,
@@ -89,6 +94,7 @@ export function FormularioDaMarca({
   const [nome, setNome] = useState(gravada.app_name ?? "");
   const [hex, setHex] = useState(gravada.accent_hex ?? "");
   const [hexEscuro, setHexEscuro] = useState(gravada.accent_dark_hex ?? "");
+  const [fundoEscuro, setFundoEscuro] = useState(gravada.dark_bg_hex ?? "");
   const [erroTecnico, setErroTecnico] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -96,6 +102,8 @@ export function FormularioDaMarca({
   const hexValido = hexLimpo.length === 0 || ehHexValido(hexLimpo);
   const hexEscuroLimpo = hexEscuro.trim();
   const hexEscuroValido = hexEscuroLimpo.length === 0 || ehHexValido(hexEscuroLimpo);
+  const fundoEscuroLimpo = fundoEscuro.trim();
+  const fundoEscuroValido = fundoEscuroLimpo.length === 0 || fundoEscuroLegivel(fundoEscuroLimpo);
 
   /**
    * A resolução AO VIVO, pelo mesmo caminho que o servidor usa no render.
@@ -214,6 +222,8 @@ export function FormularioDaMarca({
       // O par da cor (#2482): vazio vira `null`, que é "apague" — os dois
       // temas voltam a derivar da cor principal.
       accent_dark_hex: hexEscuroLimpo || null,
+      // Vazio vira `null`: o escuro volta ao fundo de fábrica.
+      dark_bg_hex: fundoEscuroLimpo || null,
       // `logo_path` NÃO entra aqui, e a ausência é a decisão: quem grava o
       // arquivo é `/api/v1/marca/logo`, e o `upsert` desta action não inclui a
       // coluna — então salvar o nome não pode apagar o logo. (Na camada da
@@ -393,6 +403,53 @@ export function FormularioDaMarca({
           </p>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="dark_bg_hex">{t("Cor de fundo no tema escuro (opcional)")}</Label>
+          <div className="flex items-center gap-3">
+            <label
+              className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-border"
+              style={{
+                backgroundColor: ehHexValido(fundoEscuroLimpo)
+                  ? normalizarHex(fundoEscuroLimpo)
+                  : FUNDO_ESCURO_DE_FABRICA,
+              }}
+            >
+              <span className="sr-only">{t("Escolher a cor visualmente")}</span>
+              <input
+                type="color"
+                value={
+                  ehHexValido(fundoEscuroLimpo)
+                    ? normalizarHex(fundoEscuroLimpo)
+                    : FUNDO_ESCURO_DE_FABRICA
+                }
+                onChange={(e) => setFundoEscuro(e.target.value)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </label>
+            <Input
+              id="dark_bg_hex"
+              value={fundoEscuro}
+              onChange={(e) => setFundoEscuro(e.target.value)}
+              placeholder={FUNDO_ESCURO_DE_FABRICA}
+              spellCheck={false}
+              autoComplete="off"
+              aria-invalid={!fundoEscuroValido}
+              aria-describedby="ajuda-do-fundo-escuro"
+              className="w-36 font-mono"
+            />
+            {fundoEscuroLimpo.length > 0 && !fundoEscuroValido ? (
+              <span className="text-sm text-error-fg">
+                {ehHexValido(fundoEscuroLimpo)
+                  ? t("Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.")
+                  : t("Use um código de cor como #7a5cd6.")}
+              </span>
+            ) : null}
+          </div>
+          <p id="ajuda-do-fundo-escuro" className="text-xs text-text-muted">
+            {t("Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.")}
+          </p>
+        </div>
+
         {derivada ? (
           <div className="space-y-2">
             <p className="text-sm text-text-muted">
@@ -456,7 +513,7 @@ export function FormularioDaMarca({
         {erroTecnico ? (
           <span className="font-mono text-xs text-text-muted">{erroTecnico}</span>
         ) : null}
-        <Button type="submit" disabled={isPending || !hexValido || !hexEscuroValido}>
+        <Button type="submit" disabled={isPending || !hexValido || !hexEscuroValido || !fundoEscuroValido}>
           {isPending ? t("Salvando…") : t("Salvar")}
         </Button>
       </div>

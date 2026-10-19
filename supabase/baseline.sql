@@ -58518,3 +58518,19 @@ create view public.external_db_connections_safe
 
 revoke all on public.external_db_connections_safe from anon;
 grant select on public.external_db_connections_safe to authenticated;
+
+-- ---- fundo do tema escuro: coluna da instalação (migration 0704) ----
+alter table public.platform_branding
+  add column if not exists dark_bg_hex text;
+
+alter table public.platform_branding
+  drop constraint if exists platform_branding_dark_bg_hex;
+
+alter table public.platform_branding
+  add constraint platform_branding_dark_bg_hex check (
+    dark_bg_hex is null or dark_bg_hex ~ '^#[0-9a-f]{6}$'
+  );
+
+comment on column public.platform_branding.dark_bg_hex is
+  'Cor de FUNDO do tema escuro da instalação. Cartões, painéis e bordas do escuro derivam dela por color-mix (app/layout.tsx). NULL = o fundo de fábrica de app/globals.css. Mesmo CHECK de accent_hex. Lida/escrita só server-side (service_role), como o resto da tabela.';
+

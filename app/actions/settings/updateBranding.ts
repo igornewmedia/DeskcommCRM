@@ -102,6 +102,12 @@ export async function updateBranding(
     // ser uma pergunta com resposta.
     accent_dark_hex:
       parsed.data.accent_dark_hex === null ? null : normalizarHex(parsed.data.accent_dark_hex),
+    ...(parsed.data.dark_bg_hex === undefined
+      ? {}
+      : {
+          dark_bg_hex:
+            parsed.data.dark_bg_hex === null ? null : normalizarHex(parsed.data.dark_bg_hex),
+        }),
     show_powered_by: parsed.data.show_powered_by,
     // A linha passa a ser HUMANA. É o que impede a semeadura do `.env` de
     // reescrever a escolha no render seguinte — inclusive quando a escolha foi
