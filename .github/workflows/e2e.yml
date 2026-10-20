@@ -1159,6 +1159,10 @@ jobs:
       # posição na lista NÃO decide a ordem de execução — no job 108983924934
       # ela rodou em 39º de 77, e a parte inteira passou (77 passed). Medido:
       # 16,1 s de caso.
+      #
+      # `ferramentas-http` (fork igornewmedia) entrou aqui, e não na parte 6,
+      # pelo orçamento: na 6 ela levou a parte de 25 para 28 min e o corte de
+      # 24 min interrompeu a suíte sem caso vermelho. Seus 5 casos somam ~2 min.
       SPECS_PARTE_5: >-
         extensoes-da-instalacao.spec.ts
         admin-credencial-google.spec.ts
@@ -1189,6 +1193,7 @@ jobs:
         buffer-ssr-caixa-orfa.spec.ts
         contadores-do-menu.spec.ts
         honorarios-instalar-e-pagar.spec.ts
+        ferramentas-http.spec.ts
 
       # ─── PARTE 6 — nasceu em 2026-09-28, e o orçamento de 24 min a pediu ───
       #
@@ -1263,7 +1268,6 @@ jobs:
         cobranca-desligada.spec.ts
         cobranca-link-pelo-dono.spec.ts
         cobranca-suspensao-e-limites.spec.ts
-        ferramentas-http.spec.ts
         filtro-por-marcador-pela-tela.spec.ts
         fonte-de-captacao-assina-os-envios.spec.ts
         inbox-busca-e-filtros-dizem-a-verdade.spec.ts
