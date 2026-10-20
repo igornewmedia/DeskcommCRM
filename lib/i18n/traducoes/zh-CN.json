@@ -5760,5 +5760,8 @@
   "A fila do rodízio desta automação está vazia. Abra a automação e escolha quem entra no rodízio.": "此自动化的轮流队列为空。请打开自动化并选择参与轮流的人。",
   "A automação foi alterada e não tem mais o rodízio que disparou esta ação. Nada foi atribuído.": "该自动化已被修改，不再包含触发此动作的轮流。未进行任何分配。",
   "O lead deste evento não foi encontrado nesta organização, então ninguém foi atribuído.": "在此组织中未找到该事件的线索，因此未分配任何人。",
-  "Vez de {nome}, posição {posicao} da fila do rodízio.": "轮到 {nome}，轮流队列第 {posicao} 位。"
+  "Vez de {nome}, posição {posicao} da fila do rodízio.": "轮到 {nome}，轮流队列第 {posicao} 位。",
+  "Cor de fundo no tema escuro (opcional)": "深色主题背景色（可选）",
+  "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.": "请选择更深的背景：深色模式的文字将难以阅读。",
+  "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": "卡片、面板和边框会跟随此背景。留空则使用默认背景。"
 }

@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 
+import { fundoEscuroLegivel } from "@/lib/branding/fundo-escuro";
 import { ehHexValido } from "@/lib/branding/rampa";
 import { IDIOMAS } from "@/lib/i18n/idiomas";
 import { MOEDAS_SERVIDAS } from "@/lib/money";
@@ -367,6 +368,19 @@ export const platformBrandingSchema = z.object({
     .trim()
     .refine(ehHexValido, { message: "Use uma cor no formato #rrggbb" })
     .nullable(),
+  /**
+   * O FUNDO do tema escuro (migration 9001). `undefined` = não mexa (quem
+   * chama sem o campo não o apaga); `null` = volte ao fundo de fábrica. Fundo
+   * claro demais para o texto do escuro é recusado aqui, antes do banco.
+   */
+  dark_bg_hex: z
+    .string()
+    .trim()
+    .refine(fundoEscuroLegivel, {
+      message: "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível",
+    })
+    .nullable()
+    .optional(),
   show_powered_by: z.boolean(),
 });
 export type PlatformBrandingInput = z.infer<typeof platformBrandingSchema>;

@@ -91,7 +91,7 @@ describe("guarda de white-label (self-host)", () => {
     expect(layoutRaiz).toMatch(/marcaResolvida\(\)/);
   });
 
-  it("o layout raiz resolve a marca UMA vez para os quatro consumidores", () => {
+  it("o layout raiz resolve a marca UMA vez para os cinco consumidores", () => {
     // Guarda de vacuidade das duas de cima: se `marcaResolvida` deixasse de ser
     // a fonte da aba ou do CSS, o casamento de `marcaResolvida()` acima
     // continuaria verdadeiro e mediria um resolvedor que só o script usa — que é
@@ -99,12 +99,12 @@ describe("guarda de white-label (self-host)", () => {
     // cabeçalho daquela função existe para impedir.
     expect(
       layoutRaiz.match(/await marcaResolvida\(\)/g) ?? [],
-      "os quatro consumidores do layout raiz são `generateMetadata` (aba), " +
-        "`EstiloDaMarca` (cor), `MarcaNoNavegador` (`window.__PUBLIC_ENV__`) e " +
+      "os cinco consumidores do layout raiz são `generateMetadata` (aba), " +
+        "`EstiloDaMarca` (cor), `EstiloDoFundoEscuro` (fundo do escuro), `MarcaNoNavegador` (`window.__PUBLIC_ENV__`) e " +
         "`MarcaDosClientComponents` (o contexto que os `\"use client\"` leem). " +
         "Consumidor a mais é legítimo — atualize o número. Consumidor a MENOS " +
         "significa que alguém voltou a montar a pilha por fora.",
-    ).toHaveLength(4);
+    ).toHaveLength(5);
   });
 
   it("os client components recebem a marca por PROP, não por fonte só-do-navegador", () => {

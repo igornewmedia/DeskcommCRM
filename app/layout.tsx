@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { coresDaBarraDoNavegador } from "@/lib/branding/barra-do-navegador";
 import { MarcaDaInstalacaoProvider } from "@/lib/branding/contexto";
 import { cssDaMarca } from "@/lib/branding/css";
+import { cssDoFundoEscuro } from "@/lib/branding/fundo-escuro";
 import { iconeDaAba } from "@/lib/branding/icone";
 import { folhaPersonalizadaDaInstalacao } from "@/lib/branding/folha-personalizada";
 import { CABECALHO_SEM_CSS } from "@/lib/branding/sem-css-personalizado";
@@ -254,6 +255,18 @@ async function EstiloDaMarca() {
 }
 
 /**
+ * O fundo do tema escuro escolhido em `/admin/marca` (migration 9001). Bloco
+ * próprio, e não dentro de `EstiloDaMarca`, porque aquele só existe quando há
+ * COR configurada — e o fundo vale com ou sem cor. Memoizado pela mesma leitura.
+ */
+async function EstiloDoFundoEscuro() {
+  const { linha } = await marcaResolvida();
+  const css = cssDoFundoEscuro(linha?.dark_bg_hex);
+  if (!css) return null;
+  return <style id="marca-fundo-escuro" dangerouslySetInnerHTML={{ __html: css }} />;
+}
+
+/**
  * CSS visual, escopado e validado do administrador da instalação. `?sem_css=1`
  * desliga a folha para quem pediu (ver `lib/branding/sem-css-personalizado.ts`).
  */
@@ -332,6 +345,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         {/* Primeiro de tudo: a cor da instalação, antes do CSS e do script de tema. */}
         <EstiloDaMarca />
+        <EstiloDoFundoEscuro />
         <EstiloCssPersonalizado />
         {/* Config pública do Supabase + marca resolvida, em runtime (imagem
             genérica self-host). */}

@@ -85,6 +85,7 @@ const FORM_GRAVADA = {
   logo_path: null,
   accent_hex: "#1c261d",
   accent_dark_hex: "#d9ac62",
+  dark_bg_hex: null,
   show_powered_by: false,
 } as const;
 

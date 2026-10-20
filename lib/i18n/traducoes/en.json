@@ -9273,5 +9273,8 @@
   "Fluxo importado como rascunho.": "Flow imported as a draft.",
   "O arquivo não é um fluxo válido. Confira os itens abaixo e tente de novo.": "The file is not a valid flow. Check the items below and try again.",
   "Este arquivo é de um fluxo de atendimento, e os fluxos de atendimento estão desligados nesta instalação.": "This file is a service flow, and service flows are turned off in this installation.",
-  "Este fluxo ainda não tem caixas suficientes para exportar. Monte o fluxo no editor e salve antes.": "This flow doesn't have enough boxes to export yet. Build the flow in the editor and save it first."
+  "Este fluxo ainda não tem caixas suficientes para exportar. Monte o fluxo no editor e salve antes.": "This flow doesn't have enough boxes to export yet. Build the flow in the editor and save it first.",
+  "Cor de fundo no tema escuro (opcional)": "Dark theme background color (optional)",
+  "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.": "Pick a darker background: dark mode text would be unreadable.",
+  "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": "Cards, panels and borders follow this background. Leave blank for the default background."
 }

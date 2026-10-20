@@ -5629,6 +5629,9 @@ export const DICIONARIO: Traducoes = {
   "Cor da marca no tema escuro (opcional)": { es: "Color de la marca en el tema oscuro (opcional)" },
   "Cor da sua marca no tema escuro (opcional)": { es: "Color de tu marca en el tema oscuro (opcional)" },
   "Deixe em branco para os dois modos usarem a cor acima.": { es: "Déjalo en blanco para que ambos modos usen el color de arriba." },
+  "Cor de fundo no tema escuro (opcional)": { es: "Color de fondo en el tema oscuro (opcional)" },
+  "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.": { es: "Elige un fondo más oscuro: el texto del modo oscuro quedaría ilegible." },
+  "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": { es: "Tarjetas, paneles y bordes siguen este fondo. Déjalo en blanco para el fondo predeterminado." },
   "A partir da sua cor o sistema monta esta escala e escolhe, dentro dela, o tom que vai nos botões:": {
     es: "A partir de tu color el sistema arma esta escala y elige, dentro de ella, el tono que va en los botones:",
   },

@@ -104,6 +104,7 @@ export default async function Page() {
           logo_path: linha?.logo_path ?? null,
           accent_hex: linha?.accent_hex ?? null,
           accent_dark_hex: linha?.accent_dark_hex ?? null,
+          dark_bg_hex: linha?.dark_bg_hex ?? null,
           // `true` é o default da coluna: sem linha ainda, é o valor que o
           // `upsert` gravaria de qualquer forma.
           show_powered_by: linha?.show_powered_by ?? true,
