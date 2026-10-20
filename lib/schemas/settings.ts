@@ -369,7 +369,7 @@ export const platformBrandingSchema = z.object({
     .refine(ehHexValido, { message: "Use uma cor no formato #rrggbb" })
     .nullable(),
   /**
-   * O FUNDO do tema escuro (migration 0704). `undefined` = não mexa (quem
+   * O FUNDO do tema escuro (migration 9001). `undefined` = não mexa (quem
    * chama sem o campo não o apaga); `null` = volte ao fundo de fábrica. Fundo
    * claro demais para o texto do escuro é recusado aqui, antes do banco.
    */

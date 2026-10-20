@@ -540,7 +540,7 @@ export type LinhaDaInstalacao = {
    */
   readonly accent_dark_hex?: string | null;
   /**
-   * O FUNDO do tema escuro (migration 0704). Não entra na camada de marca: só o
+   * O FUNDO do tema escuro (migration 9001). Não entra na camada de marca: só o
    * `<head>` o usa, como `favicon_path` — ver `lib/branding/fundo-escuro.ts`.
    */
   readonly dark_bg_hex?: string | null;

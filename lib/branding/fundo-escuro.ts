@@ -1,5 +1,5 @@
 /**
- * O FUNDO do tema escuro escolhido em `/admin/marca` (migration 0704).
+ * O FUNDO do tema escuro escolhido em `/admin/marca` (migration 9001).
  *
  * Só o fundo é semente: cartões, painéis e bordas derivam dele por `color-mix`,
  * clareando aos poucos, como os tokens de fábrica de `app/globals.css` fazem a

@@ -255,7 +255,7 @@ async function EstiloDaMarca() {
 }
 
 /**
- * O fundo do tema escuro escolhido em `/admin/marca` (migration 0704). Bloco
+ * O fundo do tema escuro escolhido em `/admin/marca` (migration 9001). Bloco
  * próprio, e não dentro de `EstiloDaMarca`, porque aquele só existe quando há
  * COR configurada — e o fundo vale com ou sem cor. Memoizado pela mesma leitura.
  */

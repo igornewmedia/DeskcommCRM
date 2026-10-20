@@ -37,7 +37,7 @@ export interface MarcaGravada {
   readonly accent_hex: string | null;
   /** A cor do TEMA ESCURO (#2482) — o par; `null` = só a cor acima pinta. */
   readonly accent_dark_hex: string | null;
-  /** O FUNDO do tema escuro (migration 0704); `null` = o de fábrica. */
+  /** O FUNDO do tema escuro (migration 9001); `null` = o de fábrica. */
   readonly dark_bg_hex: string | null;
   readonly show_powered_by: boolean;
 }
