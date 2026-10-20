@@ -74,6 +74,13 @@ e quando editar, mexa no mínimo. Migration nova segue a doutrina do original
 `supabase/baseline.sql`. A tarefa semanal avisa quando o original usar o mesmo
 número de migration que você.
 
+**Migrations do fork usam a faixa 9001 em diante** (`<timestamp>_9001_<slug>.sql`,
+depois 9002, 9003…). O original numera em sequência (0703 em 20/10/2026, cerca
+de dez por dia), então um número logo acima do dele colide na versão seguinte.
+O teste do projeto só proíbe número repetido, não lacuna. Para saber o próximo
+livre do fork: `ls supabase/migrations | grep -oE '_9[0-9]{3}_' | sort | tail -1`.
+No apêndice do `baseline.sql`, o rótulo acompanha: `-- ---- <coisa> (migration 9001) ----`.
+
 ## Primeira execução
 
 O fork nasce sem tags e sem release, e um teste do original (`invariants`,
