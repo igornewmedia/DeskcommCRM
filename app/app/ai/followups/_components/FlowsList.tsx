@@ -128,7 +128,11 @@ export function FlowsList({ initialData, canWrite, surface }: Props) {
     );
   }
 
+  // Os diálogos ficam no MESMO lugar da árvore nos dois ramos — segundo filho do fragmento.
+  // Dentro da <div> deste ramo, a primeira importação (a lista vai de 0 para 1) remontava o diálogo e o
+  // resultado sumia: o que resolver antes de publicar e o link « Abrir o fluxo » nunca apareciam.
   return (
+    <>
     <div className="flex flex-col gap-4">
       {canWrite && (
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -175,8 +179,8 @@ export function FlowsList({ initialData, canWrite, surface }: Props) {
           </li>
         ))}
       </ul>
-
-      {dialogos}
     </div>
+    {dialogos}
+    </>
   );
 }
