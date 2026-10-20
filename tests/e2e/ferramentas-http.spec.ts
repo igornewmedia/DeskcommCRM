@@ -101,7 +101,7 @@ test("cria a ferramenta pela biblioteca, sem a credencial voltar para a tela", a
   await expect(page.getByRole("heading", { name: "Ferramentas dos agentes" })).toBeVisible({ timeout: 90_000 });
   await foto(page, "01-biblioteca-vazia");
 
-  await page.getByRole("button", { name: "Nova ferramenta" }).click();
+  await page.getByRole("button", { name: "Nova ferramenta", exact: true }).click();
   await page.locator("#ft-nome").fill("Consultar horários");
   await expect(page.locator("#ft-slug")).toHaveValue("consultar_horarios");
   await page.locator("#ft-descricao").fill("Consulta os horários livres de um procedimento numa data.");
