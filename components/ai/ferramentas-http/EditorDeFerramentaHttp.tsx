@@ -281,6 +281,8 @@ export function EditorDeFerramentaHttp(props: {
       const res = edicao
         ? await apiClient.patch<{ data: FerramentaHttpRow }>(`/api/v1/ai/http-tools/${props.ferramenta!.id}`, corpo)
         : await apiClient.post<{ data: FerramentaHttpRow }>("/api/v1/ai/http-tools", corpo);
+      // O plaintext não fica no estado nem no DOM depois de salvo.
+      mudar({ secret: "" });
       await qc.invalidateQueries({ queryKey: ferramentasHttpQueryKey });
       toast.success(edicao ? t("Ferramenta salva.") : t("Ferramenta criada."));
       props.onSalva?.(res.data);

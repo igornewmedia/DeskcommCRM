@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Ferramentas HTTP dos agentes",
+    "subtitle": "O agente consulta ou aciona outro sistema durante a conversa (migration 0705)",
+    "output": "ferramentas-http.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "ui",
+      "label": "Interface"
+    },
+    {
+      "id": "api",
+      "label": "API e turno"
+    },
+    {
+      "id": "data",
+      "label": "Banco e saída"
+    }
+  ],
+  "mainPath": [
+    "editor",
+    "api",
+    "turno",
+    "executor",
+    "destino"
+  ],
+  "nodes": [
+    {
+      "id": "biblioteca",
+      "lane": "ui",
+      "col": 1,
+      "type": "frontend",
+      "label": "/app/ai/ferramentas (biblioteca + histórico)"
+    },
+    {
+      "id": "editor",
+      "lane": "ui",
+      "col": 2,
+      "type": "frontend",
+      "label": "Seção Ferramentas do agente + Testar"
+    },
+    {
+      "id": "api",
+      "lane": "api",
+      "col": 2,
+      "type": "api",
+      "label": "/api/v1/ai/http-tools (manager+, audit)"
+    },
+    {
+      "id": "turno",
+      "lane": "api",
+      "col": 3,
+      "type": "service",
+      "label": "buildMcpTurnTools → no-turno.ts (limites, confirmação)"
+    },
+    {
+      "id": "executor",
+      "lane": "api",
+      "col": 4,
+      "type": "service",
+      "label": "executar.ts (fetchDeSaida: anti-SSRF, teto, retentativa)"
+    },
+    {
+      "id": "cadastro",
+      "lane": "data",
+      "col": 2,
+      "type": "database",
+      "label": "ai_http_tools (segredo cifrado, RLS)"
+    },
+    {
+      "id": "versao",
+      "lane": "data",
+      "col": 3,
+      "type": "database",
+      "label": "ai_agent_versions.tool_ids (http:<uuid>)"
+    },
+    {
+      "id": "historico",
+      "lane": "data",
+      "col": 4,
+      "type": "database",
+      "label": "ai_http_tool_runs (só nomes de parâmetro)"
+    },
+    {
+      "id": "destino",
+      "lane": "data",
+      "col": 5,
+      "type": "external",
+      "label": "Sistema do cliente (webhook, API)"
+    }
+  ],
+  "edges": [
+    {
+      "id": "0",
+      "from": "biblioteca",
+      "to": "api",
+      "label": "criar, editar, excluir, testar"
+    },
+    {
+      "id": "1",
+      "from": "editor",
+      "to": "api",
+      "label": "testar e cadastrar"
+    },
+    {
+      "id": "2",
+      "from": "editor",
+      "to": "versao",
+      "label": "Usar neste agente (rascunho → publicar)"
+    },
+    {
+      "id": "3",
+      "from": "api",
+      "to": "cadastro",
+      "label": "grava com credencial cifrada"
+    },
+    {
+      "id": "4",
+      "from": "versao",
+      "to": "turno",
+      "label": "ids escolhidos"
+    },
+    {
+      "id": "5",
+      "from": "cadastro",
+      "to": "turno",
+      "label": "ativas da organização"
+    },
+    {
+      "id": "6",
+      "from": "turno",
+      "to": "executor",
+      "label": "chamada validada"
+    },
+    {
+      "id": "7",
+      "from": "executor",
+      "to": "destino",
+      "label": "HTTP pelo backend"
+    },
+    {
+      "id": "8",
+      "from": "executor",
+      "to": "historico",
+      "label": "status, tempo, conversa"
+    },
+    {
+      "id": "9",
+      "from": "historico",
+      "to": "biblioteca",
+      "label": "histórico na tela"
+    },
+    {
+      "id": "10",
+      "from": "historico",
+      "to": "turno",
+      "label": "confirmação em duas fases (args_hash)"
+    }
+  ]
+}

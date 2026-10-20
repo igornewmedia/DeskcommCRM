@@ -33,9 +33,9 @@ function converter(p: Parametro, texto: string): unknown {
 function Bloco(props: { titulo: string; conteudo: unknown }) {
   const texto = typeof props.conteudo === "string" ? props.conteudo : JSON.stringify(props.conteudo, null, 2);
   return (
-    <div className="space-y-1">
+    <div className="min-w-0 space-y-1">
       <p className="text-xs font-medium">{props.titulo}</p>
-      <pre className="max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs">{texto}</pre>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">{texto}</pre>
     </div>
   );
 }
@@ -81,7 +81,9 @@ export function PainelDeTesteHttp(props: {
           <DialogDescription>{t("Informe valores de exemplo. A chamada é feita de verdade, pelo servidor.")}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        {/* `min-w-0`: item de grade não encolhe abaixo do conteúdo, e o JSON
+            longo do resultado empurrava o painel para fora da janela. */}
+        <div className="min-w-0 space-y-3">
           {f?.parameters.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("Esta ferramenta não tem parâmetros.")}</p>
           ) : null}
@@ -108,7 +110,7 @@ export function PainelDeTesteHttp(props: {
         </div>
 
         {resultado ? (
-          <div className="space-y-3 border-t pt-3" data-testid="resultado-do-teste">
+          <div className="min-w-0 space-y-3 border-t pt-3" data-testid="resultado-do-teste">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant={resultado.ok ? "default" : "destructive"}>{t(rotuloDoStatus(resultado.status))}</Badge>
               {resultado.http_status ? <span>HTTP {resultado.http_status}</span> : null}
