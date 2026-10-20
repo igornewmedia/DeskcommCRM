@@ -88,6 +88,8 @@ export interface RegistroDeExecucao {
   tentativas: number;
   /** Só os NOMES — o valor é dado do cliente. */
   paramNames: readonly string[];
+  /** Só em ferramenta com confirmação: sha256 dos valores (ver `no-turno.ts`). */
+  argsHash?: string | null;
   bytes?: number | undefined;
   erro?: string | undefined;
   agentId?: string | null;
@@ -110,6 +112,7 @@ export async function registrarExecucao(admin: SupabaseClient, r: RegistroDeExec
     duration_ms: r.duracaoMs,
     attempts: Math.min(Math.max(r.tentativas, 1), 5),
     param_names: [...r.paramNames].slice(0, 50),
+    args_hash: r.argsHash ?? null,
     response_bytes: r.bytes ?? null,
     error_code: r.erro ? r.erro.slice(0, 120) : null,
     agent_id: r.agentId ?? null,

@@ -28,6 +28,8 @@ import type { McpContext } from '@/lib/mcp/types';
 import { modulosLigados } from '@/lib/instalacao/modulos';
 import { capacidadesDaOrganizacao } from '@/lib/organizacao/capacidades';
 import { filtrarToolsComCallbackDesabilitado } from '@/lib/followup/callback-policy';
+import { carregarFerramentasHttpDoTurno, montarFerramentasHttp } from '@/lib/ferramentas-http/no-turno';
+import { allTools } from '@/lib/mcp/tools';
 
 import type { Logger } from '../../obs/logger';
 import type { CrmEdgeConfig } from './mcp-client';
@@ -180,6 +182,26 @@ export async function buildMcpTurnTools(
     ...(ids.contactId ? { contatoDoTurno: ids.contactId } : {}),
     ...(servidorExterno ? { servidorMcpExterno: servidorExterno } : {}),
   });
+
+  // Ferramentas HTTP da organização escolhidas pelo agente (`http:<uuid>`,
+  // migration 0705). Sem nenhuma escolhida: nenhuma query, nenhuma rede — o
+  // turno é o de antes. Montador próprio (ver o cabeçalho de `no-turno.ts`):
+  // as guardas de registro do CRM não se aplicam a quem não toca no CRM.
+  const ferramentasHttp = await carregarFerramentasHttpDoTurno(cfg.supabase, ids.organizationId, allowed);
+  if (ferramentasHttp.length > 0) {
+    Object.assign(
+      tools,
+      montarFerramentasHttp(ferramentasHttp, {
+        supabase: cfg.supabase,
+        ctx,
+        auth,
+        agentId: agentConfig.agentId,
+        conversationId: ids.conversationId ?? null,
+        jobId: ids.jobId,
+        nomesOcupados: new Set([...allTools.map((t) => t.name), ...Object.keys(tools)]),
+      }),
+    );
+  }
 
   return {
     tools,

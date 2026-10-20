@@ -56618,6 +56618,7 @@ create table if not exists public.ai_http_tool_runs (
   duration_ms integer not null default 0,
   attempts integer not null default 1,
   param_names text[] not null default '{}',
+  args_hash text,
   response_bytes integer,
   error_code text,
   created_by uuid references auth.users(id) on delete set null,
@@ -56647,6 +56648,10 @@ create index if not exists ai_http_tool_runs_agent_idx
 create index if not exists ai_http_tool_runs_conversation_idx
   on public.ai_http_tool_runs (conversation_id)
   where conversation_id is not null;
+-- A confirmação em duas fases procura o pedido pendente pelos mesmos valores.
+create index if not exists ai_http_tool_runs_confirmacao_idx
+  on public.ai_http_tool_runs (tool_id, conversation_id, args_hash, created_at desc)
+  where args_hash is not null;
 
 alter table public.ai_http_tool_runs enable row level security;
 
@@ -56669,6 +56674,8 @@ revoke update on public.ai_http_tool_runs from service_role;
 
 comment on table public.ai_http_tool_runs is
   'Uma linha por chamada de ferramenta HTTP (turno ou botão Testar), 0705. Guarda os NOMES dos parâmetros, nunca valores, corpo ou segredo. Sem UPDATE para service_role: o histórico só cresce (a poda é DELETE por idade).';
+comment on column public.ai_http_tool_runs.args_hash is
+  'sha256 dos valores enviados, só em ferramenta que exige confirmação: é como a segunda chamada prova que pede EXATAMENTE o que o cliente confirmou. Não guarda o valor.';
 comment on column public.ai_http_tool_runs.status is
   'Vocabulário em STATUS_DA_EXECUCAO (lib/ferramentas-http/vocabulario.ts).';
 

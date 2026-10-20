@@ -28,6 +28,8 @@
  * dela nunca monta ferramenta, então recusá-lo aqui é recusar cedo o que de
  * qualquer jeito não funcionaria.
  */
+import { ehToolIdHttp } from "@/lib/ferramentas-http/ids";
+
 
 /** Prefixo estável: é por ele que o editor e a validação reconhecem a remota. */
 export const PREFIXO_TOOL_ID_MCP_EXTERNO = "mcp_externo:";
@@ -87,7 +89,9 @@ export function ehToolIdRemoto(id: string): boolean {
  * a publicação recusar, com o mesmo dado na mesma tela.
  */
 export function toolIdAceito(id: string, catalogo: ReadonlySet<string>): boolean {
-  return catalogo.has(id) || ehToolIdRemoto(id);
+  // `http:<uuid>` — ferramenta HTTP da organização (migration 0705). Só o FORMATO
+  // é conferido aqui; a existência e a organização, o turno confere ao carregar.
+  return catalogo.has(id) || ehToolIdRemoto(id) || ehToolIdHttp(id);
 }
 
 /**

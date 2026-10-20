@@ -26,6 +26,7 @@ import { camadaLigada, lerCamadasDaOrg } from '../guardrails/camadas-da-org';
 import { loadDisclosureTemplate, countPriorAcceptedSends } from '../guardrails/disclosure/template';
 import { DEFAULT_CHANNEL_PROVIDER } from '@/lib/channels/capabilities';
 import { getToolByName } from '@/lib/mcp/tools';
+import { ehFerramentaHttpDoTurno } from '@/lib/ferramentas-http/no-turno';
 import type { Logger } from '../obs/logger';
 import type { Citation } from '@/lib/ai/citations/types';
 import type { FotosPreparadas, MidiaPreparada } from './fotos-do-produto';
@@ -408,6 +409,9 @@ export function applyPreviewPolicy(
               };
             if (
               catalog ||
+              // Ferramenta HTTP (0705): no Testar do agente nada sai para a rede —
+              // vira proposta, e quem testa a chamada é o botão da ferramenta.
+              ehFerramentaHttpDoTurno(definition) ||
               [
                 'send_template',
                 'update_lead_state',

@@ -155,6 +155,10 @@ export const ferramentaHttpSchema = z
       .default(TIMEOUT_PADRAO_MS),
   })
   .superRefine((f, ctx) => {
+    // `crm_` é o prefixo do catálogo compilado: o nome do cadastro nunca se passa por ele.
+    if (f.slug.startsWith("crm_")) {
+      ctx.addIssue({ code: "custom", path: ["slug"], message: "o prefixo crm_ é reservado" });
+    }
     let url: URL;
     try {
       url = new URL(f.url.replace(PLACEHOLDER, "x"));

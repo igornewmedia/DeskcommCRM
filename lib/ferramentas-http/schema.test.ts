@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { toolIdAceito } from "@/lib/mcp/servidor-externo/ids";
+
 import { ehToolIdHttp, lerToolIdHttp, toolIdHttp } from "./ids";
 import { ferramentaHttpSchema, validarArgumentos, type Parametro } from "./schema";
 
@@ -111,6 +113,10 @@ describe("ids de ferramenta HTTP em tool_ids", () => {
   it("ida e volta", () => {
     expect(lerToolIdHttp(toolIdHttp(id))).toBe(id);
     expect(ehToolIdHttp(toolIdHttp(id))).toBe(true);
+  });
+  it("o predicado único de tool_ids aceita a ferramenta HTTP bem formada", () => {
+    expect(toolIdAceito(toolIdHttp(id), new Set())).toBe(true);
+    expect(toolIdAceito("http:nao-e-uuid", new Set())).toBe(false);
   });
   it("recusa o que não é UUID ou não tem o prefixo", () => {
     expect(lerToolIdHttp("http:consultar_horarios")).toBeNull();
