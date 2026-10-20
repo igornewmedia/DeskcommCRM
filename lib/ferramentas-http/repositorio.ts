@@ -17,7 +17,7 @@ import type { OrigemDaExecucao, StatusDaExecucao } from "./vocabulario";
 
 /** O que a tela recebe. Literal: o client do Supabase tipa lendo o texto do select. */
 export const COLUNAS_PUBLICAS =
-  "id, organization_id, slug, name, description, is_active, method, url, headers, query, body_template, parameters, response_map, response_instructions, auth_type, auth_header_name, secret_last4, effect, requires_confirmation, safe_to_retry, timeout_ms, created_by, updated_by, created_at, updated_at";
+  "id, organization_id, slug, name, description, is_active, kind, code, method, url, headers, query, body_template, parameters, response_map, response_instructions, auth_type, auth_header_name, secret_last4, effect, requires_confirmation, safe_to_retry, timeout_ms, created_by, updated_by, created_at, updated_at";
 
 export const COLUNAS_DO_HISTORICO =
   "id, tool_id, agent_id, conversation_id, origin, status, http_status, duration_ms, attempts, param_names, response_bytes, error_code, created_by, created_at";

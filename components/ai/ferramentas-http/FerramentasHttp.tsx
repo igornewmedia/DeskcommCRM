@@ -34,6 +34,7 @@ import { ferramentasHttpQueryKey, useFerramentasHttp, type FerramentaHttpRow } f
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { toolIdHttp } from "@/lib/ferramentas-http/ids";
+import type { TipoDeFerramenta } from "@/lib/ferramentas-http/vocabulario";
 
 import { EditorDeFerramentaHttp } from "./EditorDeFerramentaHttp";
 import { PainelDeTesteHttp } from "./PainelDeTesteHttp";
@@ -51,6 +52,7 @@ export function FerramentasHttp(props: { vinculo?: VinculoComOAgente }) {
   const { data: ferramentas = [], isLoading, isSuccess } = useFerramentasHttp();
   const [editando, setEditando] = React.useState<FerramentaHttpRow | null>(null);
   const [editorAberto, setEditorAberto] = React.useState(false);
+  const [tipoNovo, setTipoNovo] = React.useState<TipoDeFerramenta>("http");
   // Muda a cada abertura: o editor remonta com o estado da ferramenta da vez.
   const [abertura, setAbertura] = React.useState(0);
   const [testando, setTestando] = React.useState<FerramentaHttpRow | null>(null);
@@ -58,8 +60,9 @@ export function FerramentasHttp(props: { vinculo?: VinculoComOAgente }) {
 
   const vinculadas = new Set(props.vinculo?.value ?? []);
 
-  function abrirEditor(f: FerramentaHttpRow | null) {
+  function abrirEditor(f: FerramentaHttpRow | null, tipo: TipoDeFerramenta = "http") {
     setEditando(f);
+    setTipoNovo(tipo);
     setAbertura((n) => n + 1);
     setEditorAberto(true);
   }
@@ -117,7 +120,7 @@ export function FerramentasHttp(props: { vinculo?: VinculoComOAgente }) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-medium">{f.name}</span>
                 <code className="text-xs text-muted-foreground">{f.slug}</code>
-                <Badge variant="secondary">{f.method}</Badge>
+                <Badge variant="secondary">{f.kind === "codigo" ? t("Código JS") : f.method}</Badge>
                 {f.effect === "acao" ? <Badge variant="outline">{t("Ação")}</Badge> : null}
                 {!f.is_active ? <Badge variant="outline">{t("Inativa")}</Badge> : null}
               </div>
@@ -175,15 +178,21 @@ export function FerramentasHttp(props: { vinculo?: VinculoComOAgente }) {
         </p>
       ) : null}
 
-      <Button type="button" variant="outline" size="sm" onClick={() => abrirEditor(null)}>
-        {t("Nova ferramenta")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => abrirEditor(null)}>
+          {t("Nova ferramenta")}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => abrirEditor(null, "codigo")}>
+          {t("Nova ferramenta de código")}
+        </Button>
+      </div>
 
       <EditorDeFerramentaHttp
         key={abertura}
         open={editorAberto}
         onOpenChange={setEditorAberto}
         ferramenta={editando}
+        tipo={tipoNovo}
         onSalva={(f) => {
           // Criada a partir do editor do agente, já nasce usada por ele.
           if (!editando && props.vinculo && !props.vinculo.disabled) vincular(f, true);

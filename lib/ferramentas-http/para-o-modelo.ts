@@ -34,6 +34,9 @@ const ORIENTACAO: Record<ResultadoDaExecucao["status"], string> = {
     "cliente, pergunte a ele; não preencha com suposição.",
   resposta_invalida: `O sistema externo respondeu num formato que não dá para ler. ${NUNCA_INVENTE}`,
   aguardando_confirmacao: "",
+  erro_codigo:
+    "O cálculo falhou (veja `problemas`). Confira se os valores enviados fazem sentido e tente uma vez " +
+    `com os valores corrigidos. ${NUNCA_INVENTE}`,
   limite_excedido:
     "O limite de chamadas desta ferramenta neste atendimento acabou. Não tente de novo agora. " +
     NUNCA_INVENTE,

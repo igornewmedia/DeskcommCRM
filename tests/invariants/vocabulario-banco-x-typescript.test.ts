@@ -67,6 +67,13 @@ const PARES: Array<{
     arquivo: "lib/ferramentas-http/vocabulario.ts",
     simbolo: "EFEITOS_DA_FERRAMENTA",
   },
+  // Ferramenta de código (9003).
+  {
+    tabela: "ai_http_tools",
+    coluna: "kind",
+    arquivo: "lib/ferramentas-http/vocabulario.ts",
+    simbolo: "TIPOS_DE_FERRAMENTA",
+  },
   {
     tabela: "ai_http_tool_runs",
     coluna: "origin",

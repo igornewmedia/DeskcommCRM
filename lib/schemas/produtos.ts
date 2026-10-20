@@ -91,12 +91,19 @@ const codigo = z
 
 const nome = z.string().trim().min(2, "o nome precisa de ao menos 2 letras").max(200);
 
+/** Código em branco é "não mandei": o banco gera o próximo PRD-NNNNN (9003). */
+const codigoOpcional = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  codigo.optional(),
+);
+
 export const produtoCreateSchema = z.object({
-  codigo,
+  codigo: codigoOpcional,
   nome,
   descricao: z.string().trim().max(2000).optional(),
   marca: z.string().trim().max(80).optional(),
   categoria: z.string().trim().max(80).optional(),
+  cor: z.string().trim().max(60).optional(),
   preco_cents: z.number().int().min(0, "preço não pode ser negativo"),
   // ⚠️ `moeda` NÃO entra aqui de propósito, e a ausência é a regra.
   //
@@ -131,6 +138,7 @@ export interface Produto {
   descricao: string | null;
   marca: string | null;
   categoria: string | null;
+  cor: string | null;
   preco_cents: number;
   moeda: string;
   custo_cents: number | null;
@@ -146,5 +154,5 @@ export interface Produto {
 
 /** As colunas que a tela e a rota leem — uma lista, não duas. */
 export const COLUNAS_DO_PRODUTO =
-  "id, codigo, nome, descricao, marca, categoria, preco_cents, moeda, custo_cents, " +
+  "id, codigo, nome, descricao, marca, categoria, cor, preco_cents, moeda, custo_cents, " +
   "controla_estoque, quantidade, ativo, origem, imagem_url, fotos, updated_at";

@@ -28,6 +28,18 @@ export const TOOLS_COMERCIO = declararTools([
     pacotes: ["vender", "atender"],
   },
   {
+    name: "crm_search_trade_in_devices",
+    category: "read",
+    rotulo: "Consultar aparelhos aceitos na troca",
+    explicacao:
+      "Consulta os aparelhos usados que a loja aceita como parte do pagamento e quanto cada um abate, para o assistente montar o orçamento com troca sem estimar valor.",
+    oQueToca: "Aparelhos aceitos na troca",
+    risco: "seguro",
+    // Só em "reter": "vender" (o pacote do agente novo) está no teto de
+    // ferramentas. Num agente já criado, liga-se à mão em Capacidades.
+    pacotes: ["reter"],
+  },
+  {
     name: "crm_draft_proposal",
     category: "write",
     rotulo: "Rascunhar proposta comercial",

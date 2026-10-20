@@ -21,6 +21,14 @@ export type TipoDeAutenticacao = (typeof TIPOS_DE_AUTENTICACAO)[number];
 export const EFEITOS_DA_FERRAMENTA = ["consulta", "acao"] as const;
 export type EfeitoDaFerramenta = (typeof EFEITOS_DA_FERRAMENTA)[number];
 
+/**
+ * `ai_http_tools.kind` (migration 9003) — `http` chama outro sistema; `codigo`
+ * roda o JavaScript cadastrado, isolado (lib/ferramentas-http/codigo.ts), e é
+ * sempre consulta: sem rede, sem efeito.
+ */
+export const TIPOS_DE_FERRAMENTA = ["http", "codigo"] as const;
+export type TipoDeFerramenta = (typeof TIPOS_DE_FERRAMENTA)[number];
+
 /** `ai_http_tool_runs.origin` */
 export const ORIGENS_DA_EXECUCAO = ["turno", "teste"] as const;
 export type OrigemDaExecucao = (typeof ORIGENS_DA_EXECUCAO)[number];
@@ -36,6 +44,8 @@ export const STATUS_DA_EXECUCAO = [
   "resposta_invalida",
   "aguardando_confirmacao",
   "limite_excedido",
+  // Ferramenta de código (9003): o JavaScript cadastrado lançou erro.
+  "erro_codigo",
 ] as const;
 export type StatusDaExecucao = (typeof STATUS_DA_EXECUCAO)[number];
 

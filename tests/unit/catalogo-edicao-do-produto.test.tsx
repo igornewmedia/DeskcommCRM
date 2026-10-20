@@ -39,6 +39,7 @@ const TEXTOS = { titulo: "Produtos", subtitulo: "", vazio: "vazio", vazioDica: "
 
 function produto(over: Partial<Produto> = {}): Produto {
   return {
+    cor: null,
     id: "11111111-1111-4111-8111-111111111111",
     codigo: "IP15",
     nome: "iPhone 15",

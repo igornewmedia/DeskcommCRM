@@ -26,7 +26,24 @@ import { ferramentasHttpQueryKey, type FerramentaHttpRow } from "@/hooks/ai/useF
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import { TIPOS_DE_PARAMETRO, type Parametro } from "@/lib/ferramentas-http/schema";
-import { METODOS_HTTP, type MetodoHttp, type TipoDeAutenticacao } from "@/lib/ferramentas-http/vocabulario";
+import {
+  METODOS_HTTP,
+  type MetodoHttp,
+  type TipoDeAutenticacao,
+  type TipoDeFerramenta,
+} from "@/lib/ferramentas-http/vocabulario";
+
+/** O ponto de partida da ferramenta de código: o cálculo de entrada + parcelamento. */
+export const EXEMPLO_DE_CODIGO = `// "input" traz os parâmetros que a IA enviou. Devolva o resultado com return.
+const financiado = input.valor_a_vista - input.entrada;
+const taxa = 0.0299; // juros ao mês
+const parcela = financiado * taxa / (1 - Math.pow(1 + taxa, -input.parcelas));
+return {
+  valor_financiado: Math.round(financiado * 100) / 100,
+  parcelas: input.parcelas,
+  valor_da_parcela: Math.round(parcela * 100) / 100,
+  total_a_prazo: Math.round((input.entrada + parcela * input.parcelas) * 100) / 100,
+};`;
 
 type Par = { chave: string; valor: string };
 
@@ -36,6 +53,8 @@ interface Estado {
   slugEditado: boolean;
   description: string;
   is_active: boolean;
+  kind: TipoDeFerramenta;
+  code: string;
   method: MetodoHttp;
   url: string;
   headers: Par[];
@@ -73,8 +92,10 @@ export function slugDoNome(nome: string): string {
   return /^[a-z]/.test(s) ? s : `f_${s}`.slice(0, 64);
 }
 
-function estadoInicial(f: FerramentaHttpRow | null): Estado {
+function estadoInicial(f: FerramentaHttpRow | null, tipo: TipoDeFerramenta): Estado {
   return {
+    kind: f?.kind ?? tipo,
+    code: f?.code ?? EXEMPLO_DE_CODIGO,
     name: f?.name ?? "",
     slug: f?.slug ?? "",
     slugEditado: Boolean(f),
@@ -144,7 +165,7 @@ const ROTULO_DO_TIPO: Record<(typeof TIPOS_DE_PARAMETRO)[number], string> = {
   enum: "Lista de opções",
 };
 
-function EditorDeParametros(props: { parametros: Parametro[]; onChange: (p: Parametro[]) => void }) {
+function EditorDeParametros(props: { parametros: Parametro[]; onChange: (p: Parametro[]) => void; codigo?: boolean }) {
   const t = useT();
   const { parametros, onChange } = props;
   const mudar = (i: number, p: Partial<Parametro>) =>
@@ -154,7 +175,9 @@ function EditorDeParametros(props: { parametros: Parametro[]; onChange: (p: Para
       <div>
         <Label>{t("Parâmetros que a IA preenche")}</Label>
         <p className="text-xs text-muted-foreground">
-          {t("Use {{nome}} na URL, nos parâmetros de URL, nos cabeçalhos ou no corpo para colocar o valor.")}
+          {props.codigo
+            ? t("No código, cada parâmetro chega como input.nome.")
+            : t("Use {{nome}} na URL, nos parâmetros de URL, nos cabeçalhos ou no corpo para colocar o valor.")}
         </p>
       </div>
       {parametros.map((p, i) => (
@@ -232,21 +255,24 @@ export function EditorDeFerramentaHttp(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ferramenta: FerramentaHttpRow | null;
+  /** Tipo da ferramenta NOVA; na edição vale o gravado. */
+  tipo?: TipoDeFerramenta;
   /** Chamado com a ferramenta salva (a criação devolve o id novo). */
   onSalva?: (f: FerramentaHttpRow) => void;
 }) {
   const t = useT();
   const qc = useQueryClient();
-  const [e, setE] = React.useState<Estado>(() => estadoInicial(props.ferramenta));
+  const [e, setE] = React.useState<Estado>(() => estadoInicial(props.ferramenta, props.tipo ?? "http"));
   const [salvando, setSalvando] = React.useState(false);
   const [erros, setErros] = React.useState<string[]>([]);
 
   const mudar = (p: Partial<Estado>) => setE((atual) => ({ ...atual, ...p }));
   const edicao = props.ferramenta !== null;
+  const codigo = e.kind === "codigo";
 
   async function salvar() {
     let body_template: unknown = null;
-    if (e.method !== "GET" && e.body.trim()) {
+    if (!codigo && e.method !== "GET" && e.body.trim()) {
       try {
         body_template = JSON.parse(e.body);
       } catch {
@@ -254,7 +280,13 @@ export function EditorDeFerramentaHttp(props: {
         return;
       }
     }
+    // Código não tem URL, credencial nem efeito: o servidor recusa se vierem.
+    const soDoHttp = codigo
+      ? { url: "", headers: {}, query: {}, auth_type: "none", auth_header_name: null, effect: "consulta" }
+      : {};
     const corpo = {
+      kind: e.kind,
+      code: codigo ? e.code : null,
       name: e.name,
       slug: e.slug,
       description: e.description,
@@ -273,7 +305,9 @@ export function EditorDeFerramentaHttp(props: {
       timeout_ms: Math.round(Number(e.timeout_s.replace(",", ".")) * 1000),
       response_map: e.response_map.some((p) => p.chave.trim()) ? deParesParaObjeto(e.response_map) : null,
       response_instructions: e.response_instructions.trim() || null,
-      ...(e.secret ? { secret: e.secret } : {}),
+      ...(e.secret && !codigo ? { secret: e.secret } : {}),
+      ...soDoHttp,
+      ...(codigo ? { requires_confirmation: false, response_map: null } : {}),
     };
     setSalvando(true);
     setErros([]);
@@ -307,7 +341,9 @@ export function EditorDeFerramentaHttp(props: {
         <SheetHeader>
           <SheetTitle>{edicao ? t("Editar ferramenta") : t("Nova ferramenta")}</SheetTitle>
           <SheetDescription>
-            {t("O agente chama este endereço durante a conversa quando precisar da informação ou da ação descrita.")}
+            {codigo
+              ? t("O agente roda este código durante a conversa, com os valores que ele enviar, e recebe o resultado.")
+              : t("O agente chama este endereço durante a conversa quando precisar da informação ou da ação descrita.")}
           </SheetDescription>
         </SheetHeader>
 
@@ -352,6 +388,26 @@ export function EditorDeFerramentaHttp(props: {
             </div>
           </section>
 
+          {codigo ? (
+            <section className="space-y-2">
+              <h4 className="text-sm font-medium">{t("Código JavaScript")}</h4>
+              <Textarea
+                aria-label={t("Código JavaScript")}
+                rows={12}
+                spellCheck={false}
+                className="font-mono text-xs"
+                value={e.code}
+                onChange={(ev) => mudar({ code: ev.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "Roda isolado no servidor: sem internet, sem arquivos e sem segredos, com até 2 segundos e 16 MB. Use input.nome para ler um parâmetro e return para devolver o resultado.",
+                )}
+              </p>
+            </section>
+          ) : null}
+
+          {codigo ? null : (
           <section className="space-y-3">
             <h4 className="text-sm font-medium">{t("Requisição")}</h4>
             <div className="flex gap-2">
@@ -416,11 +472,18 @@ export function EditorDeFerramentaHttp(props: {
               />
             </div>
           </section>
+          )}
 
           <section className="space-y-3">
-            <EditorDeParametros parametros={e.parameters} onChange={(parameters) => mudar({ parameters })} />
+            <EditorDeParametros
+              parametros={e.parameters}
+              onChange={(parameters) => mudar({ parameters })}
+              codigo={codigo}
+            />
           </section>
 
+          {codigo ? null : (
+          <>
           <section className="space-y-3">
             <h4 className="text-sm font-medium">{t("Autenticação")}</h4>
             <Select value={e.auth_type} onValueChange={(v) => mudar({ auth_type: v as TipoDeAutenticacao })}>
@@ -487,9 +550,12 @@ export function EditorDeFerramentaHttp(props: {
               <Label htmlFor="ft-repetir">{t("Pode repetir a chamada se a conexão falhar")}</Label>
             </div>
           </section>
+          </>
+          )}
 
           <section className="space-y-3">
             <h4 className="text-sm font-medium">{t("Resposta")}</h4>
+            {codigo ? null : (
             <ListaDePares
               rotulo={t("Campos que a IA recebe (opcional)")}
               pares={e.response_map}
@@ -497,6 +563,7 @@ export function EditorDeFerramentaHttp(props: {
               placeholderChave="horarios"
               placeholderValor="$.data.slots"
             />
+            )}
             <div className="space-y-1">
               <Label htmlFor="ft-instrucoes">{t("Como a IA deve interpretar a resposta (opcional)")}</Label>
               <Textarea

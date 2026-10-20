@@ -720,6 +720,10 @@ export const AUDIT_ACTIONS = [
   "catalog_product.created",
   "catalog_product.updated",
   "catalog_product.deleted",
+  // Aparelhos aceitos na troca (migration 9003).
+  "catalog_trade_in_device.created",
+  "catalog_trade_in_device.updated",
+  "catalog_trade_in_device.deleted",
   "catalog_product.imported",
   // As fotos do produto (migration 0390): subir uma, e reordenar/remover.
   "catalog_product.photo_added",

@@ -33,8 +33,10 @@ interface ResumoDaImportacao {
 interface Rascunho {
   codigo: string;
   nome: string;
+  descricao: string;
   marca: string;
   categoria: string;
+  cor: string;
   preco: string;
   custo: string;
   quantidade: string;
@@ -44,8 +46,10 @@ interface Rascunho {
 const VAZIO: Rascunho = {
   codigo: "",
   nome: "",
+  descricao: "",
   marca: "",
   categoria: "",
+  cor: "",
   preco: "",
   custo: "",
   quantidade: "0",
@@ -62,10 +66,13 @@ function doRascunho(
   if (r.custo.trim() !== "" && custo_cents === null) return { erro: t("Custo inválido.") };
 
   return {
-    codigo: r.codigo.trim(),
+    // Código em branco: o banco dá o próximo PRD-NNNNN da organização (9003).
+    ...(r.codigo.trim() ? { codigo: r.codigo.trim() } : {}),
     nome: r.nome.trim(),
+    ...(r.descricao.trim() ? { descricao: r.descricao.trim() } : {}),
     ...(r.marca.trim() ? { marca: r.marca.trim() } : {}),
     ...(r.categoria.trim() ? { categoria: r.categoria.trim() } : {}),
+    ...(r.cor.trim() ? { cor: r.cor.trim() } : {}),
     preco_cents,
     custo_cents,
     controla_estoque: r.controla_estoque,
@@ -338,6 +345,9 @@ export function ProdutosClient({
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">{textos.titulo}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{textos.subtitulo}</p>
+        <a href="/app/products/troca" className="mt-1 inline-block text-sm underline" data-testid="link-troca">
+          {t("Aparelhos aceitos na troca")}
+        </a>
       </header>
 
       <div className="mb-4 flex items-center gap-3">
@@ -428,10 +438,11 @@ export function ProdutosClient({
         <div className="mb-6 rounded-lg border p-4" data-testid="form-produto">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
-              {t("Código")}
+              {t("Código")} <span className="text-muted-foreground">{t("(opcional)")}</span>
               <input
                 value={rascunho.codigo}
                 onChange={(e) => setRascunho({ ...rascunho, codigo: e.target.value })}
+                placeholder={t("Automático (PRD-00001)")}
                 className="mt-1 h-9 w-full rounded-md border px-3"
                 data-testid="produto-codigo"
               />
@@ -459,6 +470,25 @@ export function ProdutosClient({
                 value={rascunho.categoria}
                 onChange={(e) => setRascunho({ ...rascunho, categoria: e.target.value })}
                 className="mt-1 h-9 w-full rounded-md border px-3"
+              />
+            </label>
+            <label className="text-sm">
+              {t("Cor")} <span className="text-muted-foreground">{t("(opcional)")}</span>
+              <input
+                value={rascunho.cor}
+                onChange={(e) => setRascunho({ ...rascunho, cor: e.target.value })}
+                className="mt-1 h-9 w-full rounded-md border px-3"
+                data-testid="produto-cor"
+              />
+            </label>
+            <label className="text-sm sm:col-span-2">
+              {t("Descrição")}
+              <textarea
+                value={rascunho.descricao}
+                onChange={(e) => setRascunho({ ...rascunho, descricao: e.target.value })}
+                rows={2}
+                className="mt-1 w-full rounded-md border px-3 py-2"
+                data-testid="produto-descricao"
               />
             </label>
             <label className="text-sm">
@@ -550,6 +580,7 @@ export function ProdutosClient({
                 <p className="text-xs text-muted-foreground">
                   {p.codigo}
                   {p.marca ? ` · ${p.marca}` : ""}
+                  {p.cor ? ` · ${p.cor}` : ""}
                   {p.controla_estoque
                     ? ` · ${p.quantidade} ${t("em estoque")}`
                     : ` · ${t("sem controle de estoque")}`}

@@ -168,6 +168,10 @@ export const PUBLIC_PATHS: RegExp[] = [
   /^\/api\/v1\/ai\/routers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/api\/v1\/ai\/routers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/members$/i,
   /^\/api\/v1\/ai\/routers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/test$/i,
+  // CADASTRO DE PRODUTO SERVER-TO-SERVER (fork, 9003). Sessão OU Bearer `dsk_…`,
+  // resolvidos DENTRO da rota (`app/api/v1/products/route.ts`). Ancorado com `$`:
+  // `/[id]`, `/import` e `/[id]/fotos` seguem só de sessão.
+  /^\/api\/v1\/products$/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   // O ícone da aba (`app/icon.tsx`), que o `<head>` de TODA página pede —
