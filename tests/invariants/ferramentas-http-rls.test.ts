@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { beforeAll, describe, expect, it } from "vitest";
 
 /**
- * FERRAMENTAS HTTP DOS AGENTES (migration 0705): ISOLAMENTO, PAPEL E SEGREDO.
+ * FERRAMENTAS HTTP DOS AGENTES (migration 9002): ISOLAMENTO, PAPEL E SEGREDO.
  *
  * O cadastro guarda a credencial do sistema de fora (API Key, Bearer, Basic)
  * cifrada. Cifrada não basta: a promessa é que ela NUNCA chega ao browser, então

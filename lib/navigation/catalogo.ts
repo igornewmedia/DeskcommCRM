@@ -569,7 +569,7 @@ export const NAV_CATALOG = [
     // menu inteiro tem de caber em 900px (e2e `navegacao.spec.ts`).
   },
   {
-    // Ferramentas HTTP dos agentes (migration 0705). Fora da sidebar, como as
+    // Ferramentas HTTP dos agentes (migration 9002). Fora da sidebar, como as
     // vizinhas de "Montar o agente": chega-se pelo hub de IA e pela seção
     // Ferramentas de cada agente, que tem o link para cá.
     href: "/app/ai/ferramentas",

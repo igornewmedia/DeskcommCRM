@@ -124,7 +124,7 @@ create trigger trg_ai_http_tools_audit
   for each row execute function public.fn_audit_log_row();
 
 comment on table public.ai_http_tools is
-  'Ferramenta HTTP que o agente de IA chama durante a conversa (0705). Vínculo ao agente: `http:<id>` em ai_agent_versions.tool_ids. O segredo é cifrado (AI_CRED_AES_KEY) e authenticated não tem SELECT nas colunas secret_encrypted/iv/tag.';
+  'Ferramenta HTTP que o agente de IA chama durante a conversa (9002). Vínculo ao agente: `http:<id>` em ai_agent_versions.tool_ids. O segredo é cifrado (AI_CRED_AES_KEY) e authenticated não tem SELECT nas colunas secret_encrypted/iv/tag.';
 comment on column public.ai_http_tools.slug is
   'Nome que o modelo vê como nome da tool. Único na organização entre as não excluídas.';
 comment on column public.ai_http_tools.effect is
@@ -202,7 +202,7 @@ grant select on public.ai_http_tool_runs to authenticated;
 revoke update on public.ai_http_tool_runs from service_role;
 
 comment on table public.ai_http_tool_runs is
-  'Uma linha por chamada de ferramenta HTTP (turno ou botão Testar), 0705. Guarda os NOMES dos parâmetros, nunca valores, corpo ou segredo. Sem UPDATE para service_role: o histórico só cresce (a poda é DELETE por idade).';
+  'Uma linha por chamada de ferramenta HTTP (turno ou botão Testar), 9002. Guarda os NOMES dos parâmetros, nunca valores, corpo ou segredo. Sem UPDATE para service_role: o histórico só cresce (a poda é DELETE por idade).';
 comment on column public.ai_http_tool_runs.args_hash is
   'sha256 dos valores enviados, só em ferramenta que exige confirmação: é como a segunda chamada prova que pede EXATAMENTE o que o cliente confirmou. Não guarda o valor.';
 comment on column public.ai_http_tool_runs.status is

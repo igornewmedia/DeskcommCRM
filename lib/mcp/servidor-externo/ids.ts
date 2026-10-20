@@ -89,7 +89,7 @@ export function ehToolIdRemoto(id: string): boolean {
  * a publicação recusar, com o mesmo dado na mesma tela.
  */
 export function toolIdAceito(id: string, catalogo: ReadonlySet<string>): boolean {
-  // `http:<uuid>` — ferramenta HTTP da organização (migration 0705). Só o FORMATO
+  // `http:<uuid>` — ferramenta HTTP da organização (migration 9002). Só o FORMATO
   // é conferido aqui; a existência e a organização, o turno confere ao carregar.
   return catalogo.has(id) || ehToolIdRemoto(id) || ehToolIdHttp(id);
 }

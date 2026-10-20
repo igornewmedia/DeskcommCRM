@@ -1260,7 +1260,7 @@ export function AgentForm(props: Props) {
             ) : null}
           </Card>
 
-          {/* Ferramentas HTTP da organização (migration 0705) */}
+          {/* Ferramentas HTTP da organização (migration 9002) */}
           <Card className="space-y-2 p-4">
             <h3 className="text-sm font-medium">{t("Ferramentas")}</h3>
             <p className="text-xs text-muted-foreground">

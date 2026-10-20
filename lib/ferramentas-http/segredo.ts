@@ -5,7 +5,7 @@
  * (`lib/mcp/servidor-externo/segredo.ts`): `encryptKey` com `AI_CRED_AES_KEY`,
  * colunas `secret_encrypted/_iv/_tag` + `secret_last4`. O plaintext só existe no
  * escopo da chamada; a tela vê o `last4`, e `authenticated` nem tem SELECT nas
- * colunas cifradas (migration 0705).
+ * colunas cifradas (migration 9002).
  *
  * Basic guarda `usuario:senha` num campo só — é o que o cabeçalho codifica.
  */

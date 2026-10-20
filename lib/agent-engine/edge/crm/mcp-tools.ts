@@ -184,7 +184,7 @@ export async function buildMcpTurnTools(
   });
 
   // Ferramentas HTTP da organização escolhidas pelo agente (`http:<uuid>`,
-  // migration 0705). Sem nenhuma escolhida: nenhuma query, nenhuma rede — o
+  // migration 9002). Sem nenhuma escolhida: nenhuma query, nenhuma rede — o
   // turno é o de antes. Montador próprio (ver o cabeçalho de `no-turno.ts`):
   // as guardas de registro do CRM não se aplicam a quem não toca no CRM.
   const ferramentasHttp = await carregarFerramentasHttpDoTurno(cfg.supabase, ids.organizationId, allowed);

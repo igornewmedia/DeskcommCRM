@@ -3,7 +3,7 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "Ferramentas HTTP dos agentes",
-    "subtitle": "O agente consulta ou aciona outro sistema durante a conversa (migration 0705)",
+    "subtitle": "O agente consulta ou aciona outro sistema durante a conversa (migration 9002)",
     "output": "ferramentas-http.html",
     "quality_profile": "standard"
   },

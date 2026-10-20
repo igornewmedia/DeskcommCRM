@@ -48,7 +48,7 @@ const PARES: Array<{
   arquivo: string;
   simbolo: string;
 }> = [
-  // Ferramentas HTTP dos agentes (0705).
+  // Ferramentas HTTP dos agentes (9002).
   {
     tabela: "ai_http_tools",
     coluna: "method",

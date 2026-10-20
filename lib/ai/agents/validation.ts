@@ -141,7 +141,7 @@ const versionShapeSchema = z
       // Catálogo compilado OU ferramenta remota escolhida pelo agente (item 6,
       // `mcp_externo:<leitura|escrita>:<nome>`): recusar a remota aqui faria a
       // tela salvar e a publicação devolver `tool_id_invalid`. Também a ferramenta
-      // HTTP da organização (`http:<uuid>`, migration 0705) — só no Conversador.
+      // HTTP da organização (`http:<uuid>`, migration 9002) — só no Conversador.
       .refine(
         (ids) =>
           ids.every((id) =>

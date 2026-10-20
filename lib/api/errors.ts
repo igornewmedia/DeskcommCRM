@@ -223,7 +223,7 @@ export const ApiErrorCodes = {
   external_db_desativada: "external_db_desativada",
   external_db_sem_chave: "external_db_sem_chave",
 
-  // ─── FERRAMENTAS HTTP DOS AGENTES (migration 0705) ───
+  // ─── FERRAMENTAS HTTP DOS AGENTES (migration 9002) ───
   //
   // Nome já usado na organização, e autenticação ligada sem credencial
   // informada — a tela aponta o campo certo para cada um.

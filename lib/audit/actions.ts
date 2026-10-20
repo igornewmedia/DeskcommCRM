@@ -940,7 +940,7 @@ export const AUDIT_ACTIONS = [
   "external_db_connection.updated",
   "external_db_connection.deleted",
   "external_db_connection.tested",
-  // Ferramentas HTTP dos agentes (migration 0705).
+  // Ferramentas HTTP dos agentes (migration 9002).
   "ai_http_tool.created",
   "ai_http_tool.updated",
   "ai_http_tool.deleted",

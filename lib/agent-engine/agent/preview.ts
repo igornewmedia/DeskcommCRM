@@ -409,7 +409,7 @@ export function applyPreviewPolicy(
               };
             if (
               catalog ||
-              // Ferramenta HTTP (0705): no Testar do agente nada sai para a rede —
+              // Ferramenta HTTP (9002): no Testar do agente nada sai para a rede —
               // vira proposta, e quem testa a chamada é o botão da ferramenta.
               ehFerramentaHttpDoTurno(definition) ||
               [

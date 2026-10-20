@@ -1573,7 +1573,7 @@ Spec: `tests/e2e/inbox-selecionada-no-escuro.spec.ts`.
 
 ## J48 — O agente consulta ou aciona outro sistema por uma ferramenta HTTP `[P1]` (2026-10-20)
 
-Contexto: Tools no estilo do nó AI Agent do n8n, sem n8n (migration 0705). Cadastro
+Contexto: Tools no estilo do nó AI Agent do n8n, sem n8n (migration 9002). Cadastro
 da organização em `/app/ai/ferramentas`, vínculo por agente na seção Ferramentas do
 editor (`http:<uuid>` em `tool_ids`), botão Testar e histórico. Banco FRESCO
 (Supabase local pg15 só com o `baseline.sql` da branch + seeds do e2e), `next build`

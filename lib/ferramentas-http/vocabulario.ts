@@ -1,5 +1,5 @@
 /**
- * Vocabulário das ferramentas HTTP dos agentes (migration 0705).
+ * Vocabulário das ferramentas HTTP dos agentes (migration 9002).
  *
  * Cada lista é a MESMA do CHECK da coluna no banco; o par é vigiado por
  * `tests/invariants/vocabulario-banco-x-typescript.test.ts`. Mudou aqui, muda lá
