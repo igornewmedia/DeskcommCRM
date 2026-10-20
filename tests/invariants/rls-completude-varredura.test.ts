@@ -349,6 +349,22 @@ const PROVA_PROPRIA: readonly Excecao[] = [
       "agent), promovido a admin passa a ler (controle), e UPDATE/INSERT/DELETE " +
       "pela sessão e qualquer leitura por anon dão permission denied. Migration 0510.",
   },
+  {
+    tabela: "ai_http_tools",
+    razao:
+      "tests/invariants/ferramentas-http-rls.test.ts — dois tenants reais por JWT: " +
+      "manager de A lê a de A e 0 de B (com e sem filtro de org), agent e viewer de A " +
+      "leem 0 (a leitura é de manager; por isso não cabe em TABLES, cujo usuário " +
+      "semeado é agent), secret_encrypted dá permission denied até para o manager, " +
+      "INSERT/UPDATE pela sessão e leitura por anon dão permission denied. Migration 9002.",
+  },
+  {
+    tabela: "ai_http_tool_runs",
+    razao:
+      "tests/invariants/ferramentas-http-rls.test.ts — manager de A lê o histórico de A " +
+      "e 0 de B, agent de A lê 0, INSERT pela sessão dá permission denied e service_role " +
+      "não tem UPDATE (histórico só cresce). Migration 9002.",
+  },
 ];
 
 /**

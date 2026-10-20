@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 import { ehToolIdRemoto } from "@/lib/mcp/servidor-externo/ids";
+import { ehToolIdHttp } from "@/lib/ferramentas-http/ids";
 import { VALID_TOOL_IDS } from "@/lib/mcp/tools/catalog";
 import { TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { IDS_DE_PROVEDOR } from "@/lib/ai/pontos/provedores";
@@ -139,11 +140,14 @@ const versionShapeSchema = z
       .default([])
       // Catálogo compilado OU ferramenta remota escolhida pelo agente (item 6,
       // `mcp_externo:<leitura|escrita>:<nome>`): recusar a remota aqui faria a
-      // tela salvar e a publicação devolver `tool_id_invalid`.
+      // tela salvar e a publicação devolver `tool_id_invalid`. Também a ferramenta
+      // HTTP da organização (`http:<uuid>`, migration 9002) — só no Conversador.
       .refine(
         (ids) =>
           ids.every((id) =>
-            ehToolIdRemoto(id) || (VALID_TOOL_IDS as readonly string[]).includes(id),
+            ehToolIdRemoto(id) ||
+            ehToolIdHttp(id) ||
+            (VALID_TOOL_IDS as readonly string[]).includes(id),
           ),
         { message: "tool_id_invalid" },
       ),

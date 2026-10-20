@@ -223,6 +223,13 @@ export const ApiErrorCodes = {
   external_db_desativada: "external_db_desativada",
   external_db_sem_chave: "external_db_sem_chave",
 
+  // ─── FERRAMENTAS HTTP DOS AGENTES (migration 9002) ───
+  //
+  // Nome já usado na organização, e autenticação ligada sem credencial
+  // informada — a tela aponta o campo certo para cada um.
+  http_tool_slug_em_uso: "http_tool_slug_em_uso",
+  http_tool_sem_segredo: "http_tool_sem_segredo",
+
   // ─── CHAMADA DE VOZ (spec 18, migration 0234) ───
   //
   // Três recusas que pedem TRÊS ações diferentes de quem lê, e por isso não

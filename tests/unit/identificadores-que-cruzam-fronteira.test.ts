@@ -21,6 +21,7 @@
  *   3. se o terceiro NÃO documenta nada, a lacuna entra com motivo escrito.
  *      Número não medido não vira teto: vira lacuna declarada.
  */
+import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -93,6 +94,16 @@ const FRONTEIRAS: Fronteira[] = [
     lacuna:
       "a chave entra na NOSSA API, não na deles: quem impõe a forma somos nós (UUID v4) e o terceiro não publica teto nenhum sobre ela.",
     medir: () => [randomId()],
+  },
+  {
+    id: "ferramenta-http.idempotency-key",
+    terceiro: "sistema do cliente chamado por uma ferramenta HTTP do agente (migration 9002)",
+    teto: null,
+    forma: UUID_V4,
+    fonte: "lib/ferramentas-http/executar.ts — `randomUUID()`, fixo entre as tentativas de um POST/PATCH marcado seguro repetir",
+    lacuna:
+      "o destino é qualquer API que o cliente cadastrar: não há documento de terceiro único. UUID v4 (36) é a forma que o próprio cabeçalho popularizou e cabe no que as APIs conhecidas aceitam.",
+    medir: () => [randomUUID()],
   },
   {
     id: "webhook.cabecalhos-de-saida",
@@ -196,6 +207,8 @@ const SITES: { arquivo: string; fronteira: string; papel?: "gerador" | "validado
   { arquivo: "lib/api/client.ts", fronteira: "api.idempotency-key", papel: "gerador" },
   { arquivo: "lib/api/idempotency.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "lib/extensions/http.ts", fronteira: "api.idempotency-key", papel: "validador" },
+  // Ferramentas HTTP (9002): a chave SAI para o sistema do cliente, não entra na nossa API.
+  { arquivo: "lib/ferramentas-http/executar.ts", fronteira: "ferramenta-http.idempotency-key", papel: "gerador" },
   { arquivo: "app/api/v1/admin/tenants/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "app/api/v1/channel-sessions/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
   { arquivo: "app/api/v1/lgpd/requests/[id]/approve/route.ts", fronteira: "api.idempotency-key", papel: "validador" },
@@ -322,7 +335,9 @@ describe("a varredura é de classe: site novo de fronteira reprova", () => {
     // Só o cabeçalho como tal (`'Idempotency-Key'`/`"Idempotency-Key"`), não a
     // prosa dos comentários: o que cruza fronteira é o cabeçalho.
     const achados = caminhosCom(/['"]Idempotency-Key['"]/);
-    const registrados = SITES.filter((s) => s.fronteira === "api.idempotency-key").map((s) => s.arquivo);
+    const registrados = SITES.filter(
+      (s) => s.fronteira === "api.idempotency-key" || s.fronteira === "ferramenta-http.idempotency-key",
+    ).map((s) => s.arquivo);
     expect(achados.sort()).toEqual([...registrados].sort());
   });
 

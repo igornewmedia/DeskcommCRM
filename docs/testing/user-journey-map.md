@@ -1571,6 +1571,27 @@ Spec: `tests/e2e/inbox-selecionada-no-escuro.spec.ts`.
 | J47.2 | A classe da selecionada | `bg-accent-soft`, nenhum degrau fixo `bg-accent-50…950`; a não selecionada não ganha o fundo | **PASS (unit)** — `tests/unit/selecionada-legivel-no-escuro.test.tsx` |
 | J47.3 | Tema escuro, conversa aberta E marcada no lote, com o mouse ou o foco de teclado | a linha fica num tom só (o botão não pinta por cima do fundo da linha), o foco aparece como anel, e o nome e a prévia seguem com contraste ≥ 4,5 contra o fundo efetivo | **PASS pela tela** — Evidência: `evidence/inbox-selecionada-no-escuro/02-aberta-e-marcada-com-foco.png` |
 
+## J48 — O agente consulta ou aciona outro sistema por uma ferramenta HTTP `[P1]` (2026-10-20)
+
+Contexto: Tools no estilo do nó AI Agent do n8n, sem n8n (migration 9002). Cadastro
+da organização em `/app/ai/ferramentas`, vínculo por agente na seção Ferramentas do
+editor (`http:<uuid>` em `tool_ids`), botão Testar e histórico. Banco FRESCO
+(Supabase local pg15 só com o `baseline.sql` da branch + seeds do e2e), `next build`
++ `next start`, receiver HTTP real.
+
+Spec: `tests/e2e/ferramentas-http.spec.ts`.
+
+| # | Caso | Expectativa | Resultado |
+|---|------|-------------|-----------|
+| J48.1 | Criar a ferramenta pela biblioteca, com Bearer | identificador sugerido do nome; a credencial não volta na resposta da criação, na listagem nem no HTML; no banco só cifrada + `last4` | **PASS pela tela** — `evidence/ferramentas-http/01-biblioteca-vazia.png`, `evidence/ferramentas-http/02-editor-preenchido.png`, `evidence/ferramentas-http/03-ferramenta-na-lista.png` |
+| J48.2 | Testar sem um obrigatório | "Parâmetros inválidos" citando o campo, nada sai para a rede | **PASS pela tela** — `evidence/ferramentas-http/04-teste-bloqueado.png` |
+| J48.3 | Testar contra receiver real em 127.0.0.1 | "Bloqueado" (`unsafe_url:…`), orientação de não inventar, receiver com ZERO requisições, linha no histórico | **PASS pela tela** — `evidence/ferramentas-http/04-teste-bloqueado.png`, `evidence/ferramentas-http/05-historico.png` |
+| J48.4 | Testar contra destino público (`E2E_ECO_PUBLICO_URL`, medido com postman-echo) | "Sucesso", HTTP 200, o valor chega do outro lado, credencial mascarada no "Enviado", painel sem vazamento lateral (medido: 935 px antes do conserto, 0 depois) | **PASS pela tela** (fora do CI: depende de terceiro) — `evidence/ferramentas-http/06-teste-entregue.png` |
+| J48.5 | Ligar no agente e salvar rascunho | `http:<id>` no `tool_ids` da versão; recarregada a tela, a chave segue ligada | **PASS pela tela** — `evidence/ferramentas-http/07-agente-com-ferramenta.png` |
+| J48.6 | Desativar e excluir | "Inativa"; excluída some da lista e o histórico mostra "(excluída)" | **PASS pela tela** — `evidence/ferramentas-http/08-excluida-historico-fica.png` |
+| J48.7 | Turno do agente: limites, confirmação em duas fases, turno só-leitura e vencido | sem rede quando não pode; executa só com os mesmos valores e mensagem do cliente depois do pedido | **PASS (unit)** — `lib/ferramentas-http/no-turno.test.ts` |
+| J48.8 | Conversa real no WhatsApp com IA real chamando a ferramenta | o agente pergunta o que falta, chama e responde sem inventar | **NÃO MEDIDO** — precisa de chave de IA e número conectado; a prévia do agente transforma a ferramenta em proposta |
+
 ## Jornadas exercitadas (instalação final, virgem)
 
 | Jornada | Resultado |

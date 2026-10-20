@@ -569,6 +569,18 @@ export const NAV_CATALOG = [
     // menu inteiro tem de caber em 900px (e2e `navegacao.spec.ts`).
   },
   {
+    // Ferramentas HTTP dos agentes (migration 9002). Fora da sidebar, como as
+    // vizinhas de "Montar o agente": chega-se pelo hub de IA e pela seção
+    // Ferramentas de cada agente, que tem o link para cá.
+    href: "/app/ai/ferramentas",
+    label: "Ferramentas",
+    description: "Endereços de outros sistemas que o agente consulta ou aciona durante a conversa.",
+    icon: "WebhooksLogo",
+    group: "ia",
+    section: "Montar o agente",
+    minRole: "manager",
+  },
+  {
     href: "/app/ai/credentials",
     label: "Credenciais",
     description: "A chave do provedor de IA que os agentes usam para pensar.",

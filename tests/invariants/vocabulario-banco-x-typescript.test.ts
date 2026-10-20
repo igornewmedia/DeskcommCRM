@@ -48,6 +48,37 @@ const PARES: Array<{
   arquivo: string;
   simbolo: string;
 }> = [
+  // Ferramentas HTTP dos agentes (9002).
+  {
+    tabela: "ai_http_tools",
+    coluna: "method",
+    arquivo: "lib/ferramentas-http/vocabulario.ts",
+    simbolo: "METODOS_HTTP",
+  },
+  {
+    tabela: "ai_http_tools",
+    coluna: "auth_type",
+    arquivo: "lib/ferramentas-http/vocabulario.ts",
+    simbolo: "TIPOS_DE_AUTENTICACAO",
+  },
+  {
+    tabela: "ai_http_tools",
+    coluna: "effect",
+    arquivo: "lib/ferramentas-http/vocabulario.ts",
+    simbolo: "EFEITOS_DA_FERRAMENTA",
+  },
+  {
+    tabela: "ai_http_tool_runs",
+    coluna: "origin",
+    arquivo: "lib/ferramentas-http/vocabulario.ts",
+    simbolo: "ORIGENS_DA_EXECUCAO",
+  },
+  {
+    tabela: "ai_http_tool_runs",
+    coluna: "status",
+    arquivo: "lib/ferramentas-http/vocabulario.ts",
+    simbolo: "STATUS_DA_EXECUCAO",
+  },
   {
     tabela: "ad_platform_connections",
     coluna: "google_api",
