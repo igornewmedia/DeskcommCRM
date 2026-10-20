@@ -124,7 +124,18 @@ Sem o segredo, as automações param no primeiro passo com uma mensagem dizendo 
 
 ## Trocar a VPS para as imagens do fork (uma vez)
 
-Só depois que existir a primeira release do fork. Dentro da pasta do projeto na VPS:
+Só depois que existir a primeira release do fork **e** os 4 pacotes estiverem públicos.
+
+**1. Ache a pasta certa.** É a que tem o `.env`, e não necessariamente a primeira
+cópia do código que aparece: quem roda o instalador de dentro da pasta do kit
+ganha uma instalação aninhada (`…/hostgator-setup-kit/deskcommcrm`). A pasta de
+onde o CRM está rodando de fato:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Label "com.docker.compose.project.working_dir"}}' | grep -i deskcomm
+```
+
+**2. Dentro dela** (troque `vX.Y.Z` pela última release do fork):
 
 ```bash
 git remote set-url origin https://github.com/igornewmedia/DeskcommCRM.git
@@ -133,10 +144,19 @@ git remote set-url origin https://github.com/igornewmedia/DeskcommCRM.git
 # do original com as imagens do fork.
 git tag -l 'v*' | xargs -r git tag -d
 git fetch --tags origin
+# O update.sh que está no disco ainda é o do original, e o endereço das imagens
+# é literal em _common.sh (IMG_NS). Sem esta linha ele procura a versão do fork
+# em ghcr.io/melgarafael, não acha, e para com "não consegui falar com o
+# registro de imagens (DNS/rede)" — medido na VPS em 20/10/2026. O arquivo do
+# fork só difere nessa linha, e o checkout o deixa igual ao da versão alvo, então
+# a conferência de "alterações locais" do update.sh aceita.
+git checkout vX.Y.Z -- hostgator-setup-kit/_common.sh
+grep '^IMG_NS=' hostgator-setup-kit/_common.sh   # tem de dizer ghcr.io/igornewmedia
 bash hostgator-setup-kit/update.sh
 ```
 
-O `update.sh` faz backup do banco antes, como sempre.
+O `update.sh` faz backup do banco antes, como sempre. Esse passo do `_common.sh`
+só existe nesta primeira troca: dali em diante o kit no disco já é o do fork.
 
 **Voltar para o original** (mesmo caminho, ao contrário):
 
@@ -144,6 +164,9 @@ O `update.sh` faz backup do banco antes, como sempre.
 git remote set-url origin https://github.com/melgarafael/DeskcommCRM.git
 git tag -l 'v*' | xargs -r git tag -d
 git fetch --tags origin
+# O mesmo caso da ida, ao contrário: o kit no disco aponta para as imagens do
+# fork. Pegue o _common.sh da versão do original para a qual vai voltar.
+git checkout vX.Y.Z -- hostgator-setup-kit/_common.sh
 # O código do original já está contido no do fork, então o update.sh acharia que
 # é "voltar no tempo" e recusaria. Diga a versão e confirme com --force:
 bash hostgator-setup-kit/update.sh --to vX.Y.Z --force   # a última versão do original
