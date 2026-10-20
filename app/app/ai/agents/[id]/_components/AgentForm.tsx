@@ -44,6 +44,8 @@ import { rotuloDoEstadoDoCanal } from "@/lib/channels/estado";
 import { bloqueioDePublicacao } from "@/lib/ai/agents/bloqueio-de-publicacao";
 import { mesmoRascunho } from "@/lib/ai/agents/mesmo-rascunho";
 import { ToolPicker } from "./ToolPicker";
+import { FerramentasHttp } from "@/components/ai/ferramentas-http/FerramentasHttp";
+import { ehToolIdHttp } from "@/lib/ferramentas-http/ids";
 import { TriggerEditor, type TriggerValue } from "./TriggerEditor";
 import { HandoffKeywordsInput } from "./HandoffKeywordsInput";
 import { LimiarDeSentimento } from "./LimiarDeSentimento";
@@ -1245,14 +1247,37 @@ export function AgentForm(props: Props) {
                 "Ligue por jornada de trabalho. O agente só consegue fazer o que estiver ligado aqui — e o que estiver ligado, ele fará sozinho durante o atendimento.",
               )}
             </p>
+            {/* O ToolPicker reconstrói a lista só com o catálogo: os `http:<uuid>`
+                ficam de fora dele e voltam junto no patch, senão um clique num
+                pacote apagaria as ferramentas HTTP do agente. */}
             <ToolPicker
-              value={form.tool_ids}
-              onChange={(ids) => patch({ tool_ids: ids })}
+              value={form.tool_ids.filter((id) => !ehToolIdHttp(id))}
+              onChange={(ids) => patch({ tool_ids: [...ids, ...form.tool_ids.filter(ehToolIdHttp)] })}
               disabled={disabled}
             />
             {validation.tool_ids ? (
               <p className="text-xs text-destructive">{validation.tool_ids}</p>
             ) : null}
+          </Card>
+
+          {/* Ferramentas HTTP da organização (migration 0705) */}
+          <Card className="space-y-2 p-4">
+            <h3 className="text-sm font-medium">{t("Ferramentas")}</h3>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "Endereços de outros sistemas que este agente pode consultar ou acionar durante a conversa. A mesma ferramenta serve a vários agentes.",
+              )}{" "}
+              <Link className="underline" href="/app/ai/ferramentas">
+                {t("Ver todas e o histórico")}
+              </Link>
+            </p>
+            <FerramentasHttp
+              vinculo={{
+                value: form.tool_ids.filter(ehToolIdHttp),
+                onChange: (http) => patch({ tool_ids: [...form.tool_ids.filter((id) => !ehToolIdHttp(id)), ...http] }),
+                disabled,
+              }}
+            />
           </Card>
 
           {/* O acervo que este assistente consulta (0181) */}
