@@ -164,6 +164,9 @@ só existe nesta primeira troca: dali em diante o kit no disco já é o do fork.
 git remote set-url origin https://github.com/melgarafael/DeskcommCRM.git
 git tag -l 'v*' | xargs -r git tag -d
 git fetch --tags origin
+# O mesmo caso da ida, ao contrário: o kit no disco aponta para as imagens do
+# fork. Pegue o _common.sh da versão do original para a qual vai voltar.
+git checkout vX.Y.Z -- hostgator-setup-kit/_common.sh
 # O código do original já está contido no do fork, então o update.sh acharia que
 # é "voltar no tempo" e recusaria. Diga a versão e confirme com --force:
 bash hostgator-setup-kit/update.sh --to vX.Y.Z --force   # a última versão do original
