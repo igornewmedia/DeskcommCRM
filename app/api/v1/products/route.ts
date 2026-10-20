@@ -7,13 +7,19 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * Escrita exige `manager`: preço de venda não se altera com papel de leitura, e
  * é o motivo de este catálogo não morar na tabela da Nuvemshop, cuja policy é
  * org-flat sem checagem de papel.
+ *
+ * Sessão OU `Authorization: Bearer dsk_…` (`lib/api/auth-dual.ts`, fork 9003):
+ * é a porta de cadastro de produto para sistemas externos, listada em
+ * /admin/endpoints. A organização vem da linha do token, nunca do corpo; ler
+ * pede `mcp:read`, cadastrar pede `mcp:write`. Sem `codigo`, o banco gera o
+ * próximo `PRD-NNNNN`.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
-import { requireRole } from "@/lib/auth/require-role";
+import { resolveAuthDual, tetoDeEscritaDoToken } from "@/lib/api/auth-dual";
 import {
   FAIXA_ALEM_DO_FIM,
   filtroDaBuscaDoCatalogo,
@@ -23,14 +29,18 @@ import {
 } from "@/lib/catalogo/busca-da-tela";
 import { moedaDaOrganizacao } from "@/lib/catalogo/moeda-da-org";
 import { COLUNAS_DO_PRODUTO, produtoCreateSchema } from "@/lib/schemas/produtos";
-import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
-  const authz = await requireRole("viewer", { requestId, resource: "catalog_products" });
+  const authz = await resolveAuthDual(req, {
+    requestId,
+    resource: "catalog_products",
+    role: "viewer",
+    scope: "mcp:read",
+  });
   if (!authz.ok) return authz.response;
 
   const params = req.nextUrl.searchParams;
@@ -53,12 +63,12 @@ export async function GET(req: NextRequest): Promise<Response> {
     return ok([], { requestId, meta: { total: 0, pagina, por_pagina: PRODUTOS_POR_PAGINA, has_more: false } });
   }
 
-  const supabase = await createClient();
+  const { supabase, organizationId } = authz;
 
   let q = supabase
     .from("catalog_products")
     .select(COLUNAS_DO_PRODUTO, paginado ? { count: "exact" } : undefined)
-    .eq("organization_id", authz.org.orgId);
+    .eq("organization_id", organizationId);
 
   // A régua do termo (vírgula, parêntese, `%`, termo só de pontuação) mora em
   // `filtroDaBuscaDoCatalogo` — a mesma que a tela usa.
@@ -73,7 +83,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     let contagem = supabase
       .from("catalog_products")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", authz.org.orgId);
+      .eq("organization_id", organizationId);
     if (filtro) contagem = contagem.or(filtro);
     const { count: agora } = await contagem;
     return ok([], {
@@ -100,9 +110,17 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (supportDenied) return supportDenied;
 
   const requestId = randomUUID();
-  const authz = await requireRole("manager", { requestId, resource: "catalog_products" });
+  const authz = await resolveAuthDual(req, {
+    requestId,
+    resource: "catalog_products",
+    role: "manager",
+    scope: "mcp:write",
+  });
   if (!authz.ok) return authz.response;
-  const t = (texto: string) => traduzir(texto, authz.user.idioma);
+  const t = (texto: string) => traduzir(texto, authz.idioma ?? "pt-BR");
+
+  const teto = await tetoDeEscritaDoToken(authz, "produtos", requestId);
+  if (teto) return teto;
 
   const parsed = produtoCreateSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -112,12 +130,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   }
 
-  const supabase = await createClient();
+  const { supabase, organizationId } = authz;
   // A moeda vem da organização, nunca do corpo — ver `moedaDaOrganizacao()`.
-  const moeda = await moedaDaOrganizacao(supabase, authz.org.orgId);
+  const moeda = await moedaDaOrganizacao(supabase, organizationId);
   const { data, error } = await supabase
     .from("catalog_products")
-    .insert({ ...parsed.data, moeda, organization_id: authz.org.orgId, origem: "manual" })
+    .insert({ ...parsed.data, moeda, organization_id: organizationId, origem: "manual" })
     .select(COLUNAS_DO_PRODUTO)
     .single();
 
@@ -131,8 +149,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   await audit({
-    organizationId: authz.org.orgId,
-    actorUserId: authz.user.id,
+    organizationId,
+    actorUserId: authz.actor.type === "user" ? authz.actor.id : null,
+    actorApiTokenId: authz.apiTokenId ?? null,
     action: "catalog_product.created",
     resourceType: "catalog_products",
     resourceId: (data as unknown as { id: string }).id,

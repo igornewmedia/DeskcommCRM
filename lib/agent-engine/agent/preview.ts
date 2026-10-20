@@ -26,7 +26,7 @@ import { camadaLigada, lerCamadasDaOrg } from '../guardrails/camadas-da-org';
 import { loadDisclosureTemplate, countPriorAcceptedSends } from '../guardrails/disclosure/template';
 import { DEFAULT_CHANNEL_PROVIDER } from '@/lib/channels/capabilities';
 import { getToolByName } from '@/lib/mcp/tools';
-import { ehFerramentaHttpDoTurno } from '@/lib/ferramentas-http/no-turno';
+import { ehFerramentaDeCodigoDoTurno, ehFerramentaHttpDoTurno } from '@/lib/ferramentas-http/no-turno';
 import type { Logger } from '../obs/logger';
 import type { Citation } from '@/lib/ai/citations/types';
 import type { FotosPreparadas, MidiaPreparada } from './fotos-do-produto';
@@ -173,6 +173,7 @@ export const SCENARIO_READS = new Set([
   // Testar (que roda sem contato) não responde preço nem agenda e o agente cai
   // em "vou confirmar e te retorno". Dado de contato/lead continua fora daqui.
   'crm_search_products',
+  'crm_search_trade_in_devices',
   'crm_search_knowledge',
 ]);
 /**
@@ -307,6 +308,8 @@ export function applyPreviewPolicy(
       const catalog = getToolByName(name);
       if (
         nativeRead ||
+        // Ferramenta de código (9003): só calcula, sem rede — roda no Testar.
+        ehFerramentaDeCodigoDoTurno(definition) ||
         (catalog?.category === 'read' && (p.contactId !== null || SCENARIO_READS.has(name)))
       )
         return [name, definition];

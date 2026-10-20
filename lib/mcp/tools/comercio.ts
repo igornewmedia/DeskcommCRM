@@ -250,7 +250,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       const { data: lote, error, count } = await ctx.supabase
         .from("catalog_products")
         .select(
-          "id, codigo, nome, descricao, marca, categoria, preco_cents, moeda, controla_estoque, quantidade, ativo, fotos",
+          "id, codigo, nome, descricao, marca, categoria, cor, preco_cents, moeda, controla_estoque, quantidade, ativo, fotos",
           { count: "exact" },
         )
         .eq("organization_id", ctx.organizationId)
@@ -289,6 +289,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       descricao: string | null;
       marca: string | null;
       categoria: string | null;
+      cor: string | null;
       preco_cents: number;
       moeda: string;
       controla_estoque: boolean;
@@ -360,6 +361,8 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
         preco_cents: produto.preco_cents,
         ...(produto.marca ? { marca: produto.marca } : {}),
         ...(produto.descricao ? { descricao: produto.descricao } : {}),
+        ...(produto.categoria ? { categoria: produto.categoria } : {}),
+        ...(produto.cor ? { cor: produto.cor } : {}),
         disponivel: !produto.controla_estoque || produto.quantidade > 0,
         // Quantas fotos, e não quais: o caminho é vocabulário interno e a URL
         // assinada expira. Quem manda a foto é o `send_message` do agente, com
@@ -373,6 +376,72 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       // número que sumiu importava.
       ...(ignorados.length > 0 ? { numeros_ignorados: ignorados } : {}),
       ...(mensagem ? { mensagem } : {}),
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// aparelhos aceitos na troca (migration 9003)
+// ---------------------------------------------------------------------------
+
+const trocaInputShape = {
+  termo: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .describe("o aparelho que a pessoa quer dar na troca, do jeito que ela disse (ex.: 'iphone 11 64gb'). Vazio lista todos."),
+  limite: z.number().int().min(1).max(50).optional().default(10),
+};
+
+export const crmSearchTradeInDevices: McpToolDefinition<typeof trocaInputShape> = {
+  name: "crm_search_trade_in_devices",
+  description:
+    "Consulta os aparelhos usados que a loja ACEITA como parte do pagamento (troca) e quanto cada um " +
+    "abate do preço do aparelho novo. Use quando a pessoa quiser dar o aparelho dela na troca: passe o " +
+    "modelo e a capacidade que ela disse. Responda com o valor que voltar aqui — nunca estime. Se o " +
+    "aparelho dela não aparecer, a loja não o aceita na troca: diga isso e não invente valor. " +
+    "Para o orçamento, desconte o abatimento do preço à vista do aparelho novo (crm_search_products).",
+  inputSchema: trocaInputShape,
+  category: "read",
+  requiresRole: "agent",
+  requiresScope: "mcp:read",
+  handler: async (input, ctx) => {
+    const { data, error } = await ctx.supabase
+      .from("catalog_trade_in_devices")
+      .select("modelo, capacidade, abatimento_cents, moeda")
+      .eq("organization_id", ctx.organizationId)
+      .eq("ativo", true)
+      .order("modelo")
+      // shortcut: lista de troca de loja cabe em 500; acima disso, paginar como crm_search_products.
+      .limit(500);
+    if (error) throw new Error(`buscar_aparelhos_de_troca_falhou: ${error.message}`);
+
+    type Linha = { modelo: string; capacidade: string | null; abatimento_cents: number; moeda: string };
+    const linhas = (data ?? []) as Linha[];
+    const termo = input.termo?.trim() ?? "";
+    const achados = termo
+      ? buscarComRelaxamento(
+          linhas.map((l) => ({ ...l, nome: [l.modelo, l.capacidade].filter(Boolean).join(" "), codigo: "" })),
+          termo,
+        ).achados.map((a) => a.produto)
+      : linhas;
+
+    if (achados.length === 0) {
+      return {
+        aparelhos: [],
+        mensagem: termo
+          ? "esse aparelho não está na lista de aparelhos aceitos na troca. Não invente valor de abatimento."
+          : "a loja não cadastrou nenhum aparelho aceito na troca. Não ofereça troca nem invente valor.",
+      };
+    }
+    return {
+      aparelhos: achados.slice(0, input.limite).map((a) => ({
+        modelo: a.modelo,
+        ...(a.capacidade ? { capacidade: a.capacidade } : {}),
+        abatimento: formatCents(a.abatimento_cents, a.moeda),
+        abatimento_cents: a.abatimento_cents,
+      })),
     };
   },
 };

@@ -11,6 +11,7 @@ const ROTULO: Record<StatusDaExecucao, string> = {
   resposta_invalida: "Resposta inválida",
   aguardando_confirmacao: "Aguardando confirmação",
   limite_excedido: "Limite excedido",
+  erro_codigo: "Erro no código",
 };
 
 export function rotuloDoStatus(s: StatusDaExecucao): string {

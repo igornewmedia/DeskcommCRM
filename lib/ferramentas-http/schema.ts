@@ -21,7 +21,11 @@ import {
   TIMEOUT_MINIMO_MS,
   TIMEOUT_PADRAO_MS,
   TIPOS_DE_AUTENTICACAO,
+  TIPOS_DE_FERRAMENTA,
 } from "./vocabulario";
+
+/** Teto do código de uma ferramenta de código — o mesmo do CHECK (9003). */
+export const MAX_CARACTERES_DO_CODIGO = 20_000;
 
 export const TIPOS_DE_PARAMETRO = ["string", "number", "integer", "boolean", "enum"] as const;
 export const FORMATOS_DE_TEXTO = ["date", "date-time", "email"] as const;
@@ -127,8 +131,12 @@ export const ferramentaHttpSchema = z
     name: z.string().trim().min(1).max(120),
     description: z.string().trim().min(1).max(1024),
     is_active: z.boolean().default(true),
+    kind: z.enum(TIPOS_DE_FERRAMENTA).default("http"),
+    // Só na ferramenta de código (9003); a de HTTP grava `null`.
+    code: z.string().max(MAX_CARACTERES_DO_CODIGO).nullable().default(null),
     method: z.enum(METODOS_HTTP).default("POST"),
-    url: z.string().trim().min(8).max(2048),
+    // Vazio só na ferramenta de código; a de HTTP é cobrada no refinamento.
+    url: z.string().trim().max(2048).default(""),
     headers: cabecalhosSchema.default({}),
     query: z.record(z.string().min(1).max(128), textoDeTemplate).default({}),
     body_template: z.unknown().nullable().default(null),
@@ -159,6 +167,22 @@ export const ferramentaHttpSchema = z
     if (f.slug.startsWith("crm_")) {
       ctx.addIssue({ code: "custom", path: ["slug"], message: "o prefixo crm_ é reservado" });
     }
+    if (f.kind === "codigo") {
+      // Roda isolado, sem rede (lib/ferramentas-http/codigo.ts): nada de URL,
+      // credencial ou efeito. O banco cobra o mesmo (CHECK da 9003).
+      if (!f.code?.trim()) {
+        ctx.addIssue({ code: "custom", path: ["code"], message: "escreva o código" });
+      }
+      if (f.url !== "") ctx.addIssue({ code: "custom", path: ["url"], message: "código não tem URL" });
+      if (f.auth_type !== "none") {
+        ctx.addIssue({ code: "custom", path: ["auth_type"], message: "código não tem autenticação" });
+      }
+      if (f.effect !== "consulta") {
+        ctx.addIssue({ code: "custom", path: ["effect"], message: "código só calcula: é consulta" });
+      }
+      return;
+    }
+    if (f.code !== null) ctx.addIssue({ code: "custom", path: ["code"], message: "código só vale para ferramenta de código" });
     let url: URL;
     try {
       url = new URL(f.url.replace(PLACEHOLDER, "x"));

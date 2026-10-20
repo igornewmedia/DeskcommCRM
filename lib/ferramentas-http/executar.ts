@@ -25,6 +25,7 @@ import { randomUUID } from "node:crypto";
 import { EgressBlockedError } from "@/lib/agent-engine/edge/egress";
 import { fetchDeSaida, type GuardaDeSaida } from "@/lib/mcp/servidor-externo/chamada";
 
+import { executarCodigo } from "./codigo";
 import { montarRequisicao, RequisicaoInvalidaError, type CadastroDaRequisicao } from "./montar-requisicao";
 import { CAMINHO_DE_RESPOSTA, type FerramentaHttp, type Parametro, validarArgumentos } from "./schema";
 import type { StatusDaExecucao } from "./vocabulario";
@@ -36,7 +37,7 @@ const STATUS_QUE_REPETEM = new Set([429, 502, 503, 504]);
 const ESPERAS_MS = [500, 1_500];
 
 export type CadastroExecutavel = CadastroDaRequisicao &
-  Pick<FerramentaHttp, "safe_to_retry" | "timeout_ms" | "response_map"> & {
+  Pick<FerramentaHttp, "safe_to_retry" | "timeout_ms" | "response_map" | "kind" | "code"> & {
     parameters: readonly Parametro[];
   };
 
@@ -169,6 +170,8 @@ export async function executarFerramentaHttp(
   argsBrutos: unknown,
   opcoes: OpcoesDeExecucao,
 ): Promise<ResultadoDaExecucao> {
+  // Ferramenta de código (9003): não sai para a rede, roda isolada aqui mesmo.
+  if (cadastro.kind === "codigo") return executarCodigo(cadastro, argsBrutos, opcoes.agora);
   const agora = opcoes.agora ?? Date.now;
   const esperar = opcoes.esperar ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
   const inicio = agora();

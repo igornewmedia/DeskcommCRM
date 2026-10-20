@@ -55,6 +55,8 @@ const NAV_ITEMS: NavItem[] = [
   // completude que o vigia varre só aquela raiz. O admin de plataforma tem
   // navegação própria, e é esta lista.
   { href: "/admin/marca", label: "Marca", icon: Palette },
+  // Endpoints que sistemas externos chamam com token `dsk_` (fork, 9003).
+  { href: "/admin/endpoints", label: "Endpoints", icon: Plugs },
   // A porta da tela do app OAuth do Google — mesma razão da de cima: é
   // configuração da INSTALAÇÃO, e /admin tem navegação própria.
   { href: "/admin/google", label: "Google Agenda", icon: CalendarBlank },

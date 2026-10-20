@@ -56,6 +56,8 @@ function json(res: ServerResponse, status: number, corpo: unknown) {
 
 function cadastro(parcial: Partial<CadastroExecutavel> = {}): CadastroExecutavel {
   return {
+    kind: "http",
+    code: null,
     method: "POST",
     url: `${base}/horarios`,
     headers: {},

@@ -66,6 +66,15 @@ export function ehFerramentaHttpDoTurno(t: unknown): boolean {
   return typeof t === "object" && t !== null && MONTADAS.has(t);
 }
 
+/**
+ * Ferramenta de CÓDIGO (9003): só calcula, isolada e sem rede — na prévia ela
+ * RODA de verdade, porque não há efeito nenhum a evitar.
+ */
+const DE_CODIGO = new WeakSet<object>();
+export function ehFerramentaDeCodigoDoTurno(t: unknown): boolean {
+  return typeof t === "object" && t !== null && DE_CODIGO.has(t);
+}
+
 /** Lê as ferramentas ativas que `tool_ids` escolheu, já com a credencial aberta. */
 export async function carregarFerramentasHttpDoTurno(
   supabase: SupabaseClient,
@@ -286,7 +295,7 @@ export function montarFerramentasHttp(
       inputSchema: z.object(shapeDosParametros(linha.parameters)),
       execute: executar,
     });
-    MONTADAS.add(montada);
+    (linha.kind === "codigo" ? DE_CODIGO : MONTADAS).add(montada);
     saida[linha.slug] = montada;
   }
   return saida;

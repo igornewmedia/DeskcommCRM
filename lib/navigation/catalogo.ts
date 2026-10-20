@@ -373,6 +373,16 @@ export const NAV_CATALOG = [
     // Inbox e o funil, que continuam no menu.
   },
   {
+    // Aparelhos aceitos na troca (migration 9003). Sem `sidebar`, como Produtos:
+    // chega-se por "Ver tudo em CRM" e pelo link no topo de Produtos.
+    href: "/app/products/troca",
+    label: "Aparelhos na troca",
+    description: "Os aparelhos usados que a loja aceita como parte do pagamento e quanto cada um abate.",
+    icon: "Storefront",
+    group: "crm",
+    section: "Preparar a venda",
+  },
+  {
     href: "/app/imports",
     label: "Importações",
     description: "Lotes CSV/XLSX de empresas, pessoas e telefones.",

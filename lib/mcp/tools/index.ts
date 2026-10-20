@@ -50,7 +50,7 @@ import {
   crmGetOrgMemory,
   crmSaveOrgMemory,
 } from "./evolucao";
-import { crmListContactOrders, crmSearchProducts } from "./comercio";
+import { crmListContactOrders, crmSearchProducts, crmSearchTradeInDevices } from "./comercio";
 import { crmGetHonorariosContrato, crmListHonorariosParcelas } from "./honorarios";
 import { crmDescribeExternalData, crmQueryExternalData } from "./dados-externos";
 import { crmListPrivacyRequests } from "./privacidade";
@@ -121,6 +121,7 @@ export const allTools: ReadonlyArray<McpToolDefinition> = [
   crmSaveOrgMemory,
   crmListContactOrders,
   crmSearchProducts,
+  crmSearchTradeInDevices,
   crmGetHonorariosContrato,
   crmListHonorariosParcelas,
   crmPrepararProposta,

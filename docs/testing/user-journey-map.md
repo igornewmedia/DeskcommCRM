@@ -1592,6 +1592,22 @@ Spec: `tests/e2e/ferramentas-http.spec.ts`.
 | J48.7 | Turno do agente: limites, confirmação em duas fases, turno só-leitura e vencido | sem rede quando não pode; executa só com os mesmos valores e mensagem do cliente depois do pedido | **PASS (unit)** — `lib/ferramentas-http/no-turno.test.ts` |
 | J48.8 | Conversa real no WhatsApp com IA real chamando a ferramenta | o agente pergunta o que falta, chama e responde sem inventar | **NÃO MEDIDO** — precisa de chave de IA e número conectado; a prévia do agente transforma a ferramenta em proposta |
 
+## J49 — Catálogo com cor e código automático, aparelhos na troca, ferramenta de código e cadastro por API `[P1]` (2026-10-20)
+
+Contexto: migration 9003 (fork). Stack local (`pnpm local:up`, imagens construídas da
+branch), Supabase local com a migration aplicada. Roteiro Playwright dirigindo a tela,
+capturas em `evidence/catalogo-troca-e-codigo/`. Sem spec e2e nova.
+
+| # | Caso | Expectativa | Resultado |
+|---|------|-------------|-----------|
+| J49.1 | Novo produto sem código, com cor, marca, categoria e descrição | 201; código `PRD-00001` gerado pelo banco; cor na lista | **PASS pela tela** — `evidence/catalogo-troca-e-codigo/01-produto-formulario.png`, `evidence/catalogo-troca-e-codigo/02-produto-na-lista.png` |
+| J49.2 | Aparelho aceito na troca (modelo, capacidade, abatimento) pelo link em Produtos | 201; aparece com o valor formatado | **PASS pela tela** — `evidence/catalogo-troca-e-codigo/03-aparelhos-na-troca.png` |
+| J49.3 | Nova ferramenta de código (entrada + parcelamento) e Testar | 201; resultado calculado no QuickJS; "o que o agente recebe" com os dados | **PASS pela tela** — `evidence/catalogo-troca-e-codigo/04-editor-de-codigo.png`, `evidence/catalogo-troca-e-codigo/05-teste-do-calculo.png` |
+| J49.4 | /admin/endpoints | lista os endpoints com curl de exemplo | **PASS pela tela** — `evidence/catalogo-troca-e-codigo/06-admin-endpoints.png` |
+| J49.5 | `POST /api/v1/products` com Bearer `dsk_` | token `agent` → 403; token com `role:manager` → 201 `PRD-00003`, auditoria com `actor_api_token_id`; sem token → 401 | **PASS (HTTP real)** |
+| J49.6 | Isolamento do código: sem `process`/`require`/`fetch`, laço infinito cortado, memória com teto | recusa ou erro, processo de pé | **PASS (unit)** — `lib/ferramentas-http/codigo.test.ts` |
+| J49.7 | Conversa real com IA chamando `crm_search_trade_in_devices` e a ferramenta de código | o agente consulta e responde sem inventar | **NÃO MEDIDO** — precisa de chave de IA e número conectado |
+
 ## Jornadas exercitadas (instalação final, virgem)
 
 | Jornada | Resultado |

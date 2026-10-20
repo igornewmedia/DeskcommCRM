@@ -128,6 +128,16 @@ export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFec
           />
         </label>
         <label className="text-sm">
+          {t("Cor")}
+          <input
+            value={rascunho.cor}
+            onChange={(e) => setRascunho({ ...rascunho, cor: e.target.value })}
+            className="mt-1 h-9 w-full rounded-md border px-3"
+            disabled={desabilitado}
+            data-testid="edicao-cor"
+          />
+        </label>
+        <label className="text-sm">
           {t("Preço de venda")}
           <input
             value={rascunho.preco}

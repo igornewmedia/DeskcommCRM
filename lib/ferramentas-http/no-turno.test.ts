@@ -58,6 +58,8 @@ function fakeSupabase() {
 
 function linha(parcial: Partial<LinhaPublica> = {}): LinhaPublica {
   return {
+    kind: "http",
+    code: null,
     id: TOOL,
     organization_id: ORG,
     slug: "consultar_horarios",
