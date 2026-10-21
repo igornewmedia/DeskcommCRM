@@ -122,6 +122,35 @@ Sem o segredo, as automações param no primeiro passo com uma mensagem dizendo 
 - Pacotes no GHCR **públicos** (para a VPS baixar sem senha): github.com/igornewmedia?tab=packages
   → cada um dos 4 pacotes → Package settings → Change visibility → Public.
 
+## Instalar o fork numa VPS nova
+
+Para uma VPS que ainda não tem o CRM. Os 4 pacotes do GHCR precisam estar
+públicos (seção acima). Troque `vX.Y.Z` pela última release do fork:
+
+```bash
+cd /root
+git clone --branch vX.Y.Z https://github.com/igornewmedia/DeskcommCRM.git deskcommcrm
+cd deskcommcrm
+REPO_URL=https://github.com/igornewmedia/DeskcommCRM.git bash hostgator-setup-kit/install.sh
+```
+
+Três detalhes, e cada um evita um defeito:
+
+- **Clonar o fork, na tag da release** — não a `main`, que pode ter modificação
+  aprovada e ainda não publicada (sem imagem). Um clone do original instalaria o
+  original, e o botão "Atualizar agora" seguiria o original para sempre.
+- **Rodar o instalador da RAIZ do clone.** Rodado de outra pasta (inclusive de
+  dentro de `hostgator-setup-kit/`), ele não acha o projeto e clona um segundo,
+  aninhado ali — e do original, que é o padrão de `REPO_URL`. Foi assim que a
+  primeira VPS terminou em `…/hostgator-setup-kit/deskcommcrm`.
+- **`REPO_URL` do fork.** O instalador pergunta a esse endereço qual é a última
+  versão publicada; sem ele, pergunta ao original e pode escolher um número que
+  o fork ainda não publicou.
+
+O resto é a instalação normal do projeto (domínio, Supabase, IA, admin): ver
+`hostgator-setup-kit/README.md`. Atrás de painel com Traefik (Easypanel, Coolify,
+Hostinger…), o instalador detecta e publica atrás dele; **não** instale pelo painel.
+
 ## Trocar a VPS para as imagens do fork (uma vez)
 
 Só depois que existir a primeira release do fork **e** os 4 pacotes estiverem públicos.
