@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Funções compartilhadas pela automação do fork (igornewmedia/DeskcommCRM).
+# Funções compartilhadas pela automação do fork. Os dados próprios (repositório
+# original, este fork, comandos do projeto) moram em .fork/config.sh.
 #
 # Tudo que é DESTE fork mora em `.fork/` e em `.github/workflows/fork-*.yml`:
 # arquivos que o projeto original nunca toca, então nunca entram em conflito
@@ -9,15 +10,30 @@ set -euo pipefail
 # `comm` e `sort` precisam concordar na ordem; o locale do runner não é garantido.
 export LC_ALL=C
 
-UPSTREAM_REPO="${UPSTREAM_REPO:-melgarafael/DeskcommCRM}"
+# shellcheck source=config.sh
+source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
+
+# Valor de exemplo esquecido: parar aqui, com o nome da variável, em vez de
+# falhar mais adiante pedindo coisas a um repositório que não existe.
+for _var in UPSTREAM_REPO FORK_REPO; do
+  case "${!_var}" in
+    *__*|"") echo "::error::Preencha ${_var} em .fork/config.sh (valor atual: '${!_var}')." >&2; exit 1 ;;
+  esac
+done
+unset _var
+
+FORK_DONO="${FORK_REPO%%/*}"
+# O GHCR só aceita nome em minúsculas, mesmo quando o usuário tem maiúsculas.
+IMG_NAMESPACE="ghcr.io/$(printf '%s' "$FORK_DONO" | tr '[:upper:]' '[:lower:]')"
+
 UPSTREAM_URL="${UPSTREAM_URL:-https://github.com/${UPSTREAM_REPO}.git}"
 ARQ_VERSAO=".fork/versao-original"
 
 # O `gh` escolhe o repositório pelos remotes do git e PREFERE o chamado
 # `upstream` — que aqui é o original. Sem isto, tarefa, PR, release e build
-# seriam pedidos ao repositório do melgarafael. Medido: na primeira execução o
+# seriam pedidos ao repositório original. Medido: na primeira execução o
 # `gh release list` leu as releases do original e a release inicial não nasceu.
-export GH_REPO="${GH_REPO:-${GITHUB_REPOSITORY:-igornewmedia/DeskcommCRM}}"
+export GH_REPO="${GH_REPO:-$FORK_REPO}"
 
 # As tags do original ficam num espaço próprio (refs/upstream-tags/*), NUNCA em
 # refs/tags/*. O fork publica as próprias tags com os mesmos números; misturar

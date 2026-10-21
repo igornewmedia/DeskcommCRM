@@ -1,7 +1,7 @@
 name: Fork — sincronizar com o original
 
-# Toda segunda-feira confere se o projeto original (melgarafael/DeskcommCRM)
-# lançou versão nova. Se lançou: abre uma Issue (a sua tarefa) com as
+# Toda segunda-feira confere se o projeto original (UPSTREAM_REPO, em
+# .fork/config.sh) lançou versão nova. Se lançou: abre uma Issue (a sua tarefa) com as
 # novidades e os pontos de atenção e, quando a junção com o seu código é
 # limpa, um PR pronto para aprovar. Nunca mexe na main sozinho.
 #

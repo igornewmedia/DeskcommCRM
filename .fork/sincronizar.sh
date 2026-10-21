@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Confere se o original (melgarafael/DeskcommCRM) lançou versão nova e, se
+# Confere se o original (UPSTREAM_REPO, em config.sh) lançou versão nova e, se
 # lançou, abre a TAREFA (uma Issue) com o que mudou. Quando a junção com o
 # código deste fork é limpa, abre também o PR pronto para aprovar.
 #
@@ -19,7 +19,6 @@ ROTULO="sincronizacao"
 # A tarefa é aberta pelo robô do GitHub (BOT_TOKEN = GITHUB_TOKEN) para que a
 # notificação chegue ao dono do fork; sem ele, cai na chave do dono.
 gh_bot() { GH_TOKEN="${BOT_TOKEN:-$GH_TOKEN}" gh "$@"; }
-REPO="${GITHUB_REPOSITORY:-igornewmedia/DeskcommCRM}"
 SECO="${SINCRONIZAR_SECO:-}"
 
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
@@ -72,8 +71,8 @@ do_fork="$(arquivos_do_fork HEAD)"
 em_comum="$(comm -12 <(printf '%s\n' "$mudados_original") <(printf '%s\n' "$do_fork") | grep . || true)"
 n_mudados="$(printf '%s\n' "$mudados_original" | grep -c . || true)"
 
-migr_original="$(git diff --name-only --diff-filter=A "refs/upstream-tags/${atual}" "refs/upstream-tags/${alvo}" -- supabase/migrations | sed 's#.*/##' | grep -E '^[0-9]{14}_[0-9]{4}_' || true)"
-migr_fork="$(printf '%s\n' "$do_fork" | grep '^supabase/migrations/' | sed 's#.*/##' | grep -E '^[0-9]{14}_[0-9]{4}_' || true)"
+migr_original="$(git diff --name-only --diff-filter=A "refs/upstream-tags/${atual}" "refs/upstream-tags/${alvo}" -- "$PASTA_MIGRATIONS" | sed 's#.*/##' | grep -E '^[0-9]{14}_[0-9]{4}_' || true)"
+migr_fork="$(printf '%s\n' "$do_fork" | grep "^${PASTA_MIGRATIONS}/" | sed 's#.*/##' | grep -E '^[0-9]{14}_[0-9]{4}_' || true)"
 numeros_colididos="$(comm -12 \
   <(printf '%s\n' "$migr_original" | sed -nE 's#^[0-9]{14}_([0-9]{4})_.*#\1#p' | sort -u) \
   <(printf '%s\n' "$migr_fork"     | sed -nE 's#^[0-9]{14}_([0-9]{4})_.*#\1#p' | sort -u) | grep . || true)"
@@ -99,7 +98,7 @@ git checkout --quiet "$voltar_para"
 # ── O texto da tarefa ────────────────────────────────────────────────────────
 {
   # A menção faz a tarefa chegar como "participando", o nível mais alto de aviso.
-  echo "@${GITHUB_REPOSITORY_OWNER:-igornewmedia} o projeto original lançou **${alvo}**. Este fork está em **${atual}**."
+  echo "@${GITHUB_REPOSITORY_OWNER:-$FORK_DONO} o projeto original lançou **${alvo}**. Este fork está em **${atual}**."
   echo
   echo "Versões novas: ${versoes}· ${n_mudados} arquivo(s) alterado(s) no original."
   echo
@@ -111,7 +110,7 @@ git checkout --quiet "$voltar_para"
     echo "1. Leia as novidades abaixo e confira os pontos de atenção."
     echo "2. Espere os testes do PR terminarem (uns 30 minutos) e, com eles verdes, aprove o merge."
     echo "3. A versão nova do fork é publicada sozinha em seguida (mais uns 20 minutos, para as imagens)."
-    echo "4. Quando a release aparecer, atualize a VPS: \`bash hostgator-setup-kit/update.sh\`."
+    echo "4. Quando a release aparecer, atualize a VPS: \`${COMANDO_ATUALIZAR_VPS}\`."
   else
     echo "### ⚠️ A junção tem conflito — precisa de uma mão"
     echo
@@ -121,7 +120,7 @@ git checkout --quiet "$voltar_para"
     echo
     echo "**Para resolver com o Claude**, mande o link desta tarefa com o pedido:"
     echo
-    echo "> Resolva a tarefa de sincronização deste link no fork igornewmedia/DeskcommCRM: incorpore a ${alvo} do original preservando as minhas modificações, rode os testes e abra o PR."
+    echo "> Resolva a tarefa de sincronização deste link no fork ${FORK_REPO}: incorpore a ${alvo} do original preservando as minhas modificações, rode os testes e abra o PR."
   fi
   echo
   atencao="$(comm -23 <(printf '%s\n' "$em_comum") <(printf '%s\n' "$conflitos") | grep . || true)"
@@ -146,7 +145,7 @@ git checkout --quiet "$voltar_para"
   if [ -n "$numeros_colididos" ]; then
     echo "### 🛑 Colisão de número de migration"
     echo
-    echo "O original criou migrations com o mesmo número (NNNN) que migrations suas: **$(echo $numeros_colididos)**. A sua precisa ser renumerada antes do merge — e o apêndice correspondente no \`supabase/baseline.sql\` revisto."
+    echo "O original criou migrations com o mesmo número (NNNN) que migrations suas: **$(echo $numeros_colididos)**. A sua precisa ser renumerada antes do merge — e o apêndice correspondente no \`${ARQ_BASELINE}\` revisto."
     echo
   fi
   echo "<details><summary>Novidades do original (CHANGELOG)</summary>"

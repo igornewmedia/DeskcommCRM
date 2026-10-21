@@ -34,6 +34,7 @@ toda segunda 08:17 ──► o original lançou versão nova?
 
 | Arquivo | Para quê |
 |---|---|
+| `.fork/config.sh` | **O único com dados próprios:** repositório original, este fork e os comandos do projeto. Montando outro fork, é aqui que se troca |
 | `.fork/versao-original` | A última versão do original incorporada aqui (ex.: `v1.85.0`) |
 | `.fork/sincronizar.sh` | Compara versões, monta a tarefa, tenta a junção numa branch à parte |
 | `.fork/publicar.sh` | Cria a tag, espera as imagens ficarem prontas e só então cria a release |
