@@ -1,7 +1,7 @@
 name: Fork — publicar versão
 
 # Publica a versão do fork que a VPS instala: tag vX.Y.Z → build das quatro
-# imagens em ghcr.io/igornewmedia → release do GitHub (só depois das imagens).
+# imagens no GHCR do dono do fork → release do GitHub (só depois das imagens).
 #
 # Dispara sozinho quando um PR de sincronização entra na main (muda
 # .fork/versao-original). Para publicar uma mudança SUA entre duas versões do

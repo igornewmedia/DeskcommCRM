@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publica uma versão DESTE fork: cria a tag, a release do GitHub e dispara o
-# build das quatro imagens em ghcr.io/igornewmedia. É a release que o
+# build das imagens no GHCR do dono do fork. É a release que o
 # `update.sh` da VPS enxerga (ele pergunta releases/latest ao `origin`).
 #
 # Uso: bash .fork/publicar.sh            (no Actions, com GH_TOKEN)
@@ -57,7 +57,7 @@ fi
   fi
   echo
   echo "- Novidades do original: [CHANGELOG da ${base}](https://github.com/${UPSTREAM_REPO}/blob/${base}/CHANGELOG.md)"
-  echo "- Imagens: \`ghcr.io/igornewmedia/deskcommcrm:${tag#v}\` (e worker, scheduler, voice-agent)"
+  echo "- Imagens: \`${IMG_NAMESPACE}/${IMAGEM_PRINCIPAL}:${tag#v}\` (e as demais imagens do projeto)"
   echo
   echo "### Mudanças deste fork desde ${anterior:-o início}"
   echo
@@ -67,7 +67,7 @@ fi
   while read -r r; do excluir+=("^${r}"); done < <(git for-each-ref --format='%(refname)' 'refs/upstream-tags/')
   git log --no-merges --format='- %s (%h)' HEAD "${excluir[@]}" | awk 'NR <= 50'
   echo
-  echo "Para atualizar a VPS: \`bash hostgator-setup-kit/update.sh\`"
+  echo "Para atualizar a VPS: \`${COMANDO_ATUALIZAR_VPS}\`"
 } > /tmp/notas-da-release.md
 
 echo "Publicando ${tag} (base: ${base})"
@@ -80,16 +80,16 @@ fi
 
 if [ -z "$retomando" ]; then
   configurar_autor_bot
-  git tag -a "$tag" -m "Fork igornewmedia: ${tag} (original ${base})"
+  git tag -a "$tag" -m "Fork ${FORK_REPO}: ${tag} (original ${base})"
   git push origin "refs/tags/${tag}"
 fi
 
-# A tag empurrada com a FORK_TOKEN dispara o publish-image.yml sozinha (push de
+# A tag empurrada com a FORK_TOKEN dispara o workflow de imagens sozinha (push de
 # tag). Se o build não aparecer — ex.: execução retomada, tag já existia —, ele
 # é disparado à mão.
 inicio="$(date -u -d '-1 minute' +%Y-%m-%dT%H:%M:%SZ)"
 achar_build() {
-  gh run list --workflow publish-image.yml --branch "$tag" --limit 5 \
+  gh run list --workflow "$WORKFLOW_IMAGENS" --branch "$tag" --limit 5 \
     --json databaseId,createdAt --jq "[.[] | select(.createdAt >= \"${inicio}\")][0].databaseId // empty"
 }
 run_id=""
@@ -99,7 +99,7 @@ for _ in $(seq 1 12); do
 done
 if [ -z "$run_id" ]; then
   echo "O build não começou sozinho; disparando."
-  gh workflow run publish-image.yml --ref "$tag"
+  gh workflow run "$WORKFLOW_IMAGENS" --ref "$tag"
   for _ in $(seq 1 18); do
     run_id="$(achar_build)"; [ -n "$run_id" ] && break
     sleep 10
@@ -109,10 +109,10 @@ fi
 
 echo "Aguardando o build das imagens (run ${run_id}) — leva uns 15 a 25 minutos."
 if ! gh run watch "$run_id" --exit-status --interval 60 >/dev/null; then
-  echo "::error::O build das imagens de ${tag} falhou: https://github.com/${GITHUB_REPOSITORY:-igornewmedia/DeskcommCRM}/actions/runs/${run_id}"
+  echo "::error::O build das imagens de ${tag} falhou: https://github.com/${FORK_REPO}/actions/runs/${run_id}"
   echo "::error::A tag existe, mas a release NÃO foi criada — a VPS continua vendo a versão anterior."
   exit 1
 fi
 
 gh release create "$tag" --title "${tag}" --notes-file /tmp/notas-da-release.md --latest
-echo "Versão ${tag} publicada. Na VPS: bash hostgator-setup-kit/update.sh"
+echo "Versão ${tag} publicada. Na VPS: ${COMANDO_ATUALIZAR_VPS}"
