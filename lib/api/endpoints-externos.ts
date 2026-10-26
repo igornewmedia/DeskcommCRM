@@ -31,7 +31,7 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
     escopo: "mcp:write",
     papel: "manager",
     descricao:
-      "Cadastra um produto no catálogo. Valores em centavos. Sem `codigo`, o sistema gera o próximo PRD-00001. Custo, quantidade e cor são opcionais.",
+      "Cadastra um produto no catálogo. Valores em centavos. Sem `codigo`, o sistema gera o próximo PRD-00001. Custo, quantidade, cor e capacidade são opcionais.",
     exemplo: {
       nome: "iPhone 15 Pro 256GB",
       marca: "Apple",
@@ -41,6 +41,7 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
       custo_cents: 620000,
       quantidade: 3,
       cor: "Titânio natural",
+      capacidade: "256GB",
     },
   },
   {
@@ -50,6 +51,41 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
     escopo: "mcp:read",
     papel: "viewer",
     descricao: "Lista o catálogo. `?busca=` filtra por nome, código ou marca; `?pagina=N` pagina de 50 em 50.",
+  },
+  {
+    metodo: "PUT",
+    caminho: "/api/v1/products/:id",
+    arquivo: "app/api/v1/products/[id]/route.ts",
+    escopo: "mcp:write",
+    papel: "manager",
+    descricao:
+      "Substitui o produto inteiro pelo corpo (sincronizar com o fornecedor). Opcionais que não vierem ficam vazios; sem `codigo`, o atual é mantido.",
+    exemplo: {
+      nome: "iPhone 15 Pro 256GB",
+      marca: "Apple",
+      categoria: "Smartphones",
+      preco_cents: 729900,
+      quantidade: 5,
+      cor: "Titânio natural",
+      capacidade: "256GB",
+    },
+  },
+  {
+    metodo: "PATCH",
+    caminho: "/api/v1/products/:id",
+    arquivo: "app/api/v1/products/[id]/route.ts",
+    escopo: "mcp:write",
+    papel: "manager",
+    descricao: "Muda só os campos enviados (ex.: preço ou quantidade); o resto do produto fica como está.",
+    exemplo: { preco_cents: 719900, quantidade: 2 },
+  },
+  {
+    metodo: "DELETE",
+    caminho: "/api/v1/products/:id",
+    arquivo: "app/api/v1/products/[id]/route.ts",
+    escopo: "mcp:write",
+    papel: "manager",
+    descricao: "Remove o produto do catálogo, junto com as fotos.",
   },
   {
     metodo: "GET",
