@@ -138,6 +138,18 @@ export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFec
           />
         </label>
         <label className="text-sm">
+          {t("Capacidade")}
+          <input
+            value={rascunho.capacidade}
+            onChange={(e) => setRascunho({ ...rascunho, capacidade: e.target.value })}
+            placeholder={t("Ex.: 128GB")}
+            maxLength={60}
+            className="mt-1 h-9 w-full rounded-md border px-3"
+            disabled={desabilitado}
+            data-testid="edicao-capacidade"
+          />
+        </label>
+        <label className="text-sm">
           {t("Preço de venda")}
           <input
             value={rascunho.preco}

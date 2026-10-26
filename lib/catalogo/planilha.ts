@@ -33,6 +33,7 @@ const COLUNAS: Record<string, readonly string[]> = {
   custo: ["custo", "preco de custo", "preço de custo", "compra", "costo", "coste", "precio de costo", "precio de coste"],
   marca: ["marca", "fabricante"],
   categoria: ["categoria", "tipo", "departamento"],
+  capacidade: ["capacidade", "armazenamento", "capacidad", "almacenamiento"],
   quantidade: ["quantidade", "estoque", "qtd", "qtde", "qty", "cantidad", "existencias", "stock"],
 };
 
@@ -126,6 +127,11 @@ export interface LinhaImportada {
   custo_cents: number | null;
   marca?: string;
   categoria?: string;
+  /**
+   * Só existe quando a planilha TEM a coluna (vazia vira null). Sem a coluna, a
+   * chave some e reimportar uma planilha antiga não apaga a capacidade (9004).
+   */
+  capacidade?: string | null;
   quantidade: number;
   controla_estoque: boolean;
 }
@@ -277,6 +283,7 @@ export function lerPlanilha(
       custo_cents,
       ...(valor("marca") ? { marca: valor("marca") } : {}),
       ...(valor("categoria") ? { categoria: valor("categoria") } : {}),
+      ...(campos.has("capacidade") ? { capacidade: valor("capacidade").slice(0, 60) || null } : {}),
       quantidade,
       controla_estoque: temColunaEstoque,
     });

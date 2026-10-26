@@ -212,6 +212,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     custo_cents: p.custo_cents,
     marca: p.marca ?? null,
     categoria: p.categoria ?? null,
+    ...(p.capacidade !== undefined ? { capacidade: p.capacidade } : {}),
     controla_estoque: p.controla_estoque,
     quantidade: p.quantidade,
     origem: "planilha",
