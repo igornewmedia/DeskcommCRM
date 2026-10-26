@@ -9398,5 +9398,6 @@
   "Se a conversa ou o contato tiver uma destas etiquetas, a skill entra mesmo sem a palavra-chave.": "If the conversation or the contact has one of these tags, the skill is used even without the keyword.",
   "Cor de fundo no tema escuro (opcional)": "Dark theme background color (optional)",
   "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.": "Pick a darker background: dark mode text would be unreadable.",
-  "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": "Cards, panels and borders follow this background. Leave blank for the default background."
+  "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": "Cards, panels and borders follow this background. Leave blank for the default background.",
+  "Ex.: 128GB": "E.g.: 128GB"
 }

@@ -37,6 +37,7 @@ interface Rascunho {
   marca: string;
   categoria: string;
   cor: string;
+  capacidade: string;
   preco: string;
   custo: string;
   quantidade: string;
@@ -50,6 +51,7 @@ const VAZIO: Rascunho = {
   marca: "",
   categoria: "",
   cor: "",
+  capacidade: "",
   preco: "",
   custo: "",
   quantidade: "0",
@@ -73,6 +75,7 @@ function doRascunho(
     ...(r.marca.trim() ? { marca: r.marca.trim() } : {}),
     ...(r.categoria.trim() ? { categoria: r.categoria.trim() } : {}),
     ...(r.cor.trim() ? { cor: r.cor.trim() } : {}),
+    ...(r.capacidade.trim() ? { capacidade: r.capacidade.trim() } : {}),
     preco_cents,
     custo_cents,
     controla_estoque: r.controla_estoque,
@@ -481,6 +484,17 @@ export function ProdutosClient({
                 data-testid="produto-cor"
               />
             </label>
+            <label className="text-sm">
+              {t("Capacidade")} <span className="text-muted-foreground">{t("(opcional)")}</span>
+              <input
+                value={rascunho.capacidade}
+                onChange={(e) => setRascunho({ ...rascunho, capacidade: e.target.value })}
+                placeholder={t("Ex.: 128GB")}
+                maxLength={60}
+                className="mt-1 h-9 w-full rounded-md border px-3"
+                data-testid="produto-capacidade"
+              />
+            </label>
             <label className="text-sm sm:col-span-2">
               {t("Descrição")}
               <textarea
@@ -581,6 +595,7 @@ export function ProdutosClient({
                   {p.codigo}
                   {p.marca ? ` · ${p.marca}` : ""}
                   {p.cor ? ` · ${p.cor}` : ""}
+                  {p.capacidade ? ` · ${p.capacidade}` : ""}
                   {p.controla_estoque
                     ? ` · ${p.quantidade} ${t("em estoque")}`
                     : ` · ${t("sem controle de estoque")}`}

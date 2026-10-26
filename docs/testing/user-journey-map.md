@@ -1892,6 +1892,20 @@ capturas em `evidence/catalogo-troca-e-codigo/`. Sem spec e2e nova.
 | JF2.6 | Isolamento do código: sem `process`/`require`/`fetch`, laço infinito cortado, memória com teto | recusa ou erro, processo de pé | **PASS (unit)** — `lib/ferramentas-http/codigo.test.ts` |
 | JF2.7 | Conversa real com IA chamando `crm_search_trade_in_devices` e a ferramenta de código | o agente consulta e responde sem inventar | **NÃO MEDIDO** — precisa de chave de IA e número conectado |
 
+## JF3 — Capacidade do produto `[P1]` (2026-10-26)
+
+Contexto: migration 9004 (fork). Supabase local com a migration aplicada duas vezes
+(idempotente; 3 produtos intactos), `next build` + `next start` da branch na porta
+3100, login `teste@deskcomm.test`. Capturas em `evidence/capacidade-do-produto/`.
+
+| # | Caso | Expectativa | Resultado |
+|---|------|-------------|-----------|
+| JF3.1 | Novo produto com Cor e Capacidade | campo «Capacidade (opcional)» logo depois de «Cor», placeholder «Ex.: 128GB»; 201 | **PASS pela tela** — `evidence/capacidade-do-produto/01-formulario.jpg` |
+| JF3.2 | Lista | «PRD-00004 · Apple · Laranja · 256GB · 0 em estoque» | **PASS pela tela** — `evidence/capacidade-do-produto/02-na-lista.jpg` |
+| JF3.3 | Editar e limpar | a edição abre com 256GB; limpar e salvar some da lista; banco grava `''` (mesmo comportamento da cor) | **PASS pela tela** — `evidence/capacidade-do-produto/03-edicao.jpg`, `evidence/capacidade-do-produto/04-capacidade-limpa.jpg` |
+| JF3.4 | Schema, planilha, busca do agente | recusa acima de 60; planilha sem a coluna não apaga; «iphone 256gb» acha o produto cujo nome não tem 256GB e elimina o de 512GB | **PASS (unit)** — `tests/unit/capacidade-do-produto.test.ts` |
+| JF3.5 | Conversa real com IA perguntando «tem de 256GB?» | o agente responde pela capacidade | **NÃO MEDIDO** — precisa de chave de IA e número conectado |
+
 ## Jornadas exercitadas (instalação final, virgem)
 
 | Jornada | Resultado |

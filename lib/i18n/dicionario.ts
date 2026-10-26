@@ -94,6 +94,8 @@ export const DICIONARIO: Traducoes = {
   "Código JavaScript": { es: "Código JavaScript" },
   "Roda isolado no servidor: sem internet, sem arquivos e sem segredos, com até 2 segundos e 16 MB. Use input.nome para ler um parâmetro e return para devolver o resultado.": { es: "Se ejecuta aislado en el servidor: sin internet, sin archivos y sin secretos, con hasta 2 segundos y 16 MB. Use input.nombre para leer un parámetro y return para devolver el resultado." },
   "Código JS": { es: "Código JS" },
+  // Fork 9004 — capacidade do produto ("Capacidade" já existe mais abaixo).
+  "Ex.: 128GB": { es: "Ej.: 128GB" },
   "Nova ferramenta de código": { es: "Nueva herramienta de código" },
   "Erro no código": { es: "Error en el código" },
   "Há um ajuste proporcional esperando pagamento. Escolher outro plano cancela esse ajuste.": { es: "Hay un ajuste proporcional esperando el pago. Elegir otro plan cancela ese ajuste." },

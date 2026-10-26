@@ -250,7 +250,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       const { data: lote, error, count } = await ctx.supabase
         .from("catalog_products")
         .select(
-          "id, codigo, nome, descricao, marca, categoria, cor, preco_cents, moeda, controla_estoque, quantidade, ativo, fotos",
+          "id, codigo, nome, descricao, marca, categoria, cor, capacidade, preco_cents, moeda, controla_estoque, quantidade, ativo, fotos",
           { count: "exact" },
         )
         .eq("organization_id", ctx.organizationId)
@@ -290,6 +290,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       marca: string | null;
       categoria: string | null;
       cor: string | null;
+      capacidade: string | null;
       preco_cents: number;
       moeda: string;
       controla_estoque: boolean;
@@ -363,6 +364,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
         ...(produto.descricao ? { descricao: produto.descricao } : {}),
         ...(produto.categoria ? { categoria: produto.categoria } : {}),
         ...(produto.cor ? { cor: produto.cor } : {}),
+        ...(produto.capacidade ? { capacidade: produto.capacidade } : {}),
         disponivel: !produto.controla_estoque || produto.quantidade > 0,
         // Quantas fotos, e não quais: o caminho é vocabulário interno e a URL
         // assinada expira. Quem manda a foto é o `send_message` do agente, com

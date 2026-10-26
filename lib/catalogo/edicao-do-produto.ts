@@ -35,6 +35,7 @@ export interface RascunhoDaEdicao {
   marca: string;
   categoria: string;
   cor: string;
+  capacidade: string;
   preco: string;
   custo: string;
   quantidade: string;
@@ -78,6 +79,7 @@ export function rascunhoDaEdicao(produto: Produto): RascunhoDaEdicao {
     marca: produto.marca ?? "",
     categoria: produto.categoria ?? "",
     cor: produto.cor ?? "",
+    capacidade: produto.capacidade ?? "",
     preco: centavosParaTexto(produto.preco_cents),
     custo: centavosParaTexto(produto.custo_cents),
     quantidade: String(produto.quantidade),
@@ -121,6 +123,7 @@ export function corpoDaEdicao(
   const marca = rascunho.marca.trim();
   const categoria = rascunho.categoria.trim();
   const cor = rascunho.cor.trim();
+  const capacidade = rascunho.capacidade.trim();
   const quantidade = Math.max(0, Math.trunc(Number(rascunho.quantidade.replace(",", ".")) || 0));
 
   const corpo: Record<string, unknown> = {};
@@ -130,6 +133,7 @@ export function corpoDaEdicao(
   if (marca !== (produto.marca ?? "")) corpo.marca = marca;
   if (categoria !== (produto.categoria ?? "")) corpo.categoria = categoria;
   if (cor !== (produto.cor ?? "")) corpo.cor = cor;
+  if (capacidade !== (produto.capacidade ?? "")) corpo.capacidade = capacidade;
   if (preco !== produto.preco_cents) corpo.preco_cents = preco;
   if (custo !== produto.custo_cents) corpo.custo_cents = custo;
   if (rascunho.controla_estoque !== produto.controla_estoque) {

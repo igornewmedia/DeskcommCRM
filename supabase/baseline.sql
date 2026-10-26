@@ -60056,6 +60056,17 @@ create trigger trg_catalog_trade_in_devices_updated_at
 comment on table public.catalog_trade_in_devices is
   'Aparelhos que a loja aceita como parte do pagamento (troca), com o valor que cada um abate. O agente consulta por crm_search_trade_in_devices. Migration 9003.';
 
+-- ---- catálogo: capacidade do produto (migration 9004) ----
+alter table public.catalog_products add column if not exists capacidade text;
+
+alter table public.catalog_products drop constraint if exists catalog_products_capacidade_tamanho;
+alter table public.catalog_products
+  add constraint catalog_products_capacidade_tamanho
+  check (capacidade is null or char_length(capacidade) <= 60);
+
+comment on column public.catalog_products.capacidade is
+  'Capacidade do produto (opcional, texto livre: 128GB, 1TB, 500ml). Migration 9004.';
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
