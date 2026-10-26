@@ -173,8 +173,12 @@ export const PUBLIC_PATHS: RegExp[] = [
   /^\/api\/v1\/ai\/routers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/test$/i,
   // CADASTRO DE PRODUTO SERVER-TO-SERVER (fork, 9003). Sessão OU Bearer `dsk_…`,
   // resolvidos DENTRO da rota (`app/api/v1/products/route.ts`). Ancorado com `$`:
-  // `/[id]`, `/import` e `/[id]/fotos` seguem só de sessão.
+  // `/import` e `/[id]/fotos` seguem só de sessão.
   /^\/api\/v1\/products$/,
+  // EDITAR/REMOVER PRODUTO SERVER-TO-SERVER (fork): PUT/PATCH/DELETE de
+  // `app/api/v1/products/[id]/route.ts`, sessão OU Bearer `dsk_…` resolvidos no
+  // handler. Só forma de UUID e `$`: `/import` e `/[id]/fotos` não entram de carona.
+  /^\/api\/v1\/products\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   // O ícone da aba (`app/icon.tsx`), que o `<head>` de TODA página pede —
