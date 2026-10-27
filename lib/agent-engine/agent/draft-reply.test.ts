@@ -41,6 +41,7 @@ const AGENT: PublishedAgentConfig = {
   splitMessages: false,
   splitMaxChars: 400,
   inboundDebounceMs: null,
+  maxSendsPerTurn: null,
   multimodalInput: false,
   casesEnabled: false,
   toolIds: [],

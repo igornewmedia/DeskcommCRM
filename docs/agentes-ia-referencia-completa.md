@@ -512,10 +512,13 @@ Regra exata (`splitIntoBubbles`, `lib/agent-engine/agent/split-message.ts:22`) *
    dígitos, como em "R$ 10.990", **não** conta) e, em último caso, por palavra.
 3. Quebra de linha simples (`\n`) **dentro** do parágrafo é mantida: um orçamento de várias linhas sem
    linha em branco no meio vai numa bolha só.
-4. **Número máximo de partes = mensagens restantes no teto do turno**: `MAX_SENDS_PER_TURN`, padrão
-   **3** (`env.ts:243`; `DEFAULT_MAX_SENDS_PER_TURN = 3`, `inbound-turn.ts:634`), **bolhas incluídas**.
-   O que passar do teto vai **junto na última bolha**, separado por linha em branco
-   (`splitForSend`, `split-message.ts:210`). É variável **da instalação**, não do agente.
+4. **Número máximo de partes = mensagens restantes no teto do turno**, **bolhas incluídas**. O teto é
+   o campo **"Máximo de mensagens por resposta (1–10)"** do agente (aba Configuração, card "Estilo de
+   resposta"; coluna `ai_agent_versions.max_sends_per_turn`, migration 5001). Vazio = `MAX_SENDS_PER_TURN`
+   da instalação, padrão **3** (`env.ts:243`; `DEFAULT_MAX_SENDS_PER_TURN = 3`). Vale também na aba
+   Teste, que roda o mesmo turno. O que passar do teto vai **junto na última bolha**, separado por
+   linha em branco (`splitForSend`, `split-message.ts:210`). **[verificado]**
+   (`tests/invariants/limite-de-envios-por-turno.test.ts`).
 5. **Intervalos:** antes da 1ª bolha, atraso humano de `ATRASO_NOTAR_MS` 900 + 22 ms por caractere da
    1ª bolha, entre 1.200 e 7.500 ms, descontado o tempo que o turno já gastou
    (`atraso-humano.ts:56-65`). Entre bolhas, `throttle_ms` (1.200) + aleatório até `jitter_max_ms` (800)
@@ -536,7 +539,7 @@ Escreva cada resposta numa ÚNICA chamada de send_message. Resposta curta vai nu
 **Como escrever o prompt para "um orçamento por mensagem":** peça que cada orçamento seja **um
 parágrafo**, com quebras de linha simples entre as linhas do orçamento e **uma linha em branco** entre
 um orçamento e o seguinte; ligue "Responder em várias mensagens curtas"; ponha `split_max_chars` maior
-que o maior orçamento (ex.: 1.000); e suba `MAX_SENDS_PER_TURN` da instalação para o número de
+que o maior orçamento (ex.: 1.000); e ponha em "Máximo de mensagens por resposta" o número de
 mensagens desejado (6 para a Nume). **Não** peça para chamar `send_message` várias vezes. **[inferido]**
 a partir das regras acima.
 
@@ -888,7 +891,7 @@ no `send_message`). **Gravar cidade/estado em campo próprio do contato: NÃO EX
 
 - **Passos:** `max_steps` (padrão 10, até 25). Cada chamada de ferramenta é um passo; ao atingir, o
   loop termina. **[verificado]** `inbound-turn.ts:2620`.
-- **Envios:** `MAX_SENDS_PER_TURN` (padrão 3) mensagens físicas; o `send_message` extra recebe "você já
+- **Envios:** o máximo de mensagens por resposta do agente, ou `MAX_SENDS_PER_TURN` (padrão 3) quando vazio; o `send_message` extra recebe "você já
   enviou N mensagens neste turno (teto: N)" (`inbound-turn.ts:3551-3557`).
 - **Disjuntor:** repetir a mesma chamada exata avisa na 2ª e bloqueia na 5ª; mesma ferramenta avisa na
   3ª e para na 8ª; sem progresso avisa na 3ª e bloqueia na 5ª (`TOOL_BREAKER_*`, `env.ts:245-250`).
@@ -1020,7 +1023,7 @@ Tela: **IA › Follow-ups** ("Fluxos"), e no agente o campo "Follow-up". **[veri
 | Base — recuperação | 5 trechos, similaridade ≥ 0,40, 2.000 tokens | — | `env.ts:256-258` | instalação |
 | Ferramentas por agente | 27 | ferramentas | `selecao-por-pacote.ts:83` | não |
 | Passos por turno | 10 (1–25) | chamadas | `validation.ts:172` | por agente |
-| Mensagens físicas por turno | 3 | mensagens | `env.ts:243` `MAX_SENDS_PER_TURN` | instalação |
+| Mensagens físicas por turno | 3 | mensagens | `max_sends_per_turn` do agente (1–10); vazio = `env.ts:243` `MAX_SENDS_PER_TURN` | agente / instalação |
 | Saída do modelo | 4.096 | tokens | `run-model-call.ts:213` | organização (`settings.llm.params`) |
 | Mensagem enviada | 4.096 | caracteres | `lib/schemas/messaging.ts:78` | não |
 | Bolha | 600 (80–4.000) | caracteres | `validation.ts:192` | por agente |
@@ -1076,8 +1079,8 @@ A ordem importa: cada passo depende do anterior. **[inferido]** pela ordem que o
     "Esperar antes de responder", follow-ups. Salvar = rascunho v1.
 12. **Aba Teste** — rodar o roteiro de situações; ler as verificações e as ações propostas.
 13. **Publicar** — confirmação; vale no próximo atendimento.
-14. **Instalação (`.env`)** — se precisar de mais de 3 mensagens por turno, `MAX_SENDS_PER_TURN` (é
-    variável da VPS, não da tela).
+14. **Máximo de mensagens por resposta** — aba Configuração › Estilo de resposta (1 a 10). Vazio usa
+    o `MAX_SENDS_PER_TURN` da instalação (padrão 3).
 
 ---
 
@@ -1128,7 +1131,7 @@ Legenda: **Atende** · **Parcial** · **Não atende**.
 | 1 | Responder no Direct, incluindo anúncio, reações e respostas a story | **Parcial** | Texto e anexos do Direct: sim, ligando o agente ao canal `zernio_social` | `selectable.ts:106`; `social/adapter.ts:104` | Anúncio (`referral: null`, `parser.ts:76`), reações (evento não existe) e resposta a story (sem campo): **não**. Desenvolver: ler `referral`, reação e contexto de story do payload da Zernio no `parser.ts` e preencher o bloco de origem. |
 | 2 | Áudio (transcrição), imagem (descrição), PDF (resumo) | **Atende** (PDF parcial) | Derivação automática; PDF é **extração** de texto (até 8.000), não resumo; com `multimodal_input`, o arquivo vai junto | `derive.ts` | Resumo do PDF: o modelo resume a partir do texto extraído. Precisa da chave da OpenAI ou de modelo com áudio. |
 | 3 | Agrupar mensagens e responder uma vez após ~20 s | **Atende** | "Esperar antes de responder (segundos)" = 20 | `validation.ts:201`; `debounce.ts` | A janela é ancorada na 1ª mensagem (não reinicia a cada mensagem). |
-| 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Teto padrão de **3** (`MAX_SENDS_PER_TURN`): mudar para 6 no `.env` da VPS. "Digitando…" **não aparece no Instagram** (a pausa acontece). |
+| 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Resolvido: "Máximo de mensagens por resposta" = 6 no agente (migration 5001). "Digitando…" **não aparece no Instagram** (a pausa acontece). |
 | 5 | Data, dia da semana e hora de Brasília (saudação, corte 14h, dias úteis em SP) | **Parcial** | Bloco `## Agora` em todo turno, com dia da semana, data, hora e fuso | `lib/tempo/agora.ts:77` | Feriados: **não existe** calendário. Desenvolver uma ferramenta de código com a lista de feriados, ou colocar a lista na Memória. Fuso da organização em `America/Sao_Paulo`. |
 | 6 | Emojis nos orçamentos, várias linhas | **Atende** | Nenhum portão remove emoji nem quebra de linha | `before-send.ts:1043` | A plataforma orienta "emoji só se o lead usar"; o prompt precisa dizer que nos orçamentos é obrigatório. |
 | 7 | Buscar por nome, capacidade e cor; preço por cor no iPhone | **Parcial** | Um produto por configuração **e cor**; capacidade é pesquisada | `busca.ts:108` | A **cor não é pesquisada**: incluir a cor no **nome** do produto ("iPhone 17 Pro Max 256GB Laranja") ou desenvolver a cor no `pontuar`. Preço único das outras linhas: um produto por configuração. |

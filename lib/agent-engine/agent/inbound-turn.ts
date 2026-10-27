@@ -3306,7 +3306,9 @@ async function executarTurnoDoAgente(
   // avança quando o envio de fato sai pro canal (send_message + send_template, bolhas
   // incluídas), nunca em veto de gate. Checar `seq` antes de tentar o próximo envio
   // barra o modelo sem gastar uma chamada de before-send à toa.
-  const maxSendsPerTurn = deps.knobs.maxSendsPerTurn ?? DEFAULT_MAX_SENDS_PER_TURN;
+  // O teto do AGENTE vence o da instalação; vazio = o da instalação (comportamento de sempre).
+  const maxSendsPerTurn =
+    agentConfig?.maxSendsPerTurn ?? deps.knobs.maxSendsPerTurn ?? DEFAULT_MAX_SENDS_PER_TURN;
   // F3-11: estágio que o MODELO confirmou via update_lead_state neste turno (a máquina
   // F2-10 é a única porta). Comparado com a sugestão do classificador no fim → divergência.
   let confirmedStage: LeadStage | null = null;

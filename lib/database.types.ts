@@ -970,6 +970,7 @@ export type Database = {
           history_token_window: number;
           id: string;
           inbound_debounce_ms: number | null;
+          max_sends_per_turn: number | null;
           knowledge_source_ids: string[];
           max_steps: number;
           model: string;
@@ -1011,6 +1012,7 @@ export type Database = {
           history_token_window?: number;
           id?: string;
           inbound_debounce_ms?: number | null;
+          max_sends_per_turn?: number | null;
           knowledge_source_ids?: string[];
           max_steps?: number;
           model: string;
@@ -1051,6 +1053,7 @@ export type Database = {
           history_token_window?: number;
           id?: string;
           inbound_debounce_ms?: number | null;
+          max_sends_per_turn?: number | null;
           knowledge_source_ids?: string[];
           max_steps?: number;
           model?: string;

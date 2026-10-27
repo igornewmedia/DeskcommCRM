@@ -9431,5 +9431,7 @@
   "Cor de fundo no tema escuro (opcional)": "Dark theme background color (optional)",
   "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.": "Pick a darker background: dark mode text would be unreadable.",
   "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": "Cards, panels and borders follow this background. Leave blank for the default background.",
-  "Ex.: 128GB": "E.g.: 128GB"
+  "Ex.: 128GB": "E.g.: 128GB",
+  "Máximo de mensagens por resposta (1–10)": "Maximum messages per reply (1–10)",
+  "Quantas mensagens o agente pode mandar numa mesma resposta. As partes que passarem do limite vão juntas na última mensagem. Vazio usa o padrão da instalação.": "How many messages the agent can send in a single reply. Parts beyond the limit go together in the last message. Empty uses the installation default."
 }

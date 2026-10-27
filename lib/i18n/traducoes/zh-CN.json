@@ -5877,5 +5877,7 @@
   "Cor de fundo no tema escuro (opcional)": "深色主题背景色（可选）",
   "Escolha um fundo mais escuro: o texto do modo escuro ficaria ilegível.": "请选择更深的背景：深色模式的文字将难以阅读。",
   "Cartões, painéis e bordas acompanham este fundo. Deixe em branco para o fundo padrão.": "卡片、面板和边框会跟随此背景。留空则使用默认背景。",
-  "Ex.: 128GB": "例如：128GB"
+  "Ex.: 128GB": "例如：128GB",
+  "Máximo de mensagens por resposta (1–10)": "每次回复的最多消息数（1–10）",
+  "Quantas mensagens o agente pode mandar numa mesma resposta. As partes que passarem do limite vão juntas na última mensagem. Vazio usa o padrão da instalação.": "智能体在一次回复中最多可发送的消息数。超出限制的部分会合并到最后一条消息中。留空则使用安装默认值。"
 }
