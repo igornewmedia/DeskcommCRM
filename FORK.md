@@ -7,7 +7,7 @@ as modificações, e publica as próprias imagens Docker para a VPS.
 ## O ciclo, em uma tela
 
 ```
-toda segunda 08:17 ──► o original lançou versão nova?
+dia útil, 08:17 ──► o original lançou versão nova?
                            │ não → nada acontece
                            ▼ sim
                  abre uma Issue (a tarefa) com:
@@ -38,7 +38,7 @@ toda segunda 08:17 ──► o original lançou versão nova?
 | `.fork/sincronizar.sh` | Compara versões, monta a tarefa, tenta a junção numa branch à parte |
 | `.fork/publicar.sh` | Cria a tag, espera as imagens ficarem prontas e só então cria a release |
 | `.fork/comum.sh` | Funções que os dois scripts usam |
-| `.github/workflows/fork-sincronizar.yml` | Roda a sincronização toda segunda (ou na hora, em Actions → Run workflow) |
+| `.github/workflows/fork-sincronizar.yml` | Roda a sincronização de segunda a sexta, às 08:17 (ou na hora, em Actions → Run workflow) |
 | `.github/workflows/fork-publicar.yml` | Publica a versão quando um PR de sincronização entra na `main` |
 
 O original nunca toca nesses arquivos. As únicas mudanças em arquivos **dele**
@@ -71,7 +71,7 @@ jobs aos mapas desses testes.
 Para sofrer menos com conflitos: prefira **arquivos novos** a editar os existentes,
 e quando editar, mexa no mínimo. Migration nova segue a doutrina do original
 (`CLAUDE.md` › Migrations): arquivo em `supabase/migrations/` **e** apêndice no
-`supabase/baseline.sql`. A tarefa semanal avisa quando o original usar o mesmo
+`supabase/baseline.sql`. A tarefa de sincronização avisa quando o original usar o mesmo
 número de migration que você.
 
 **Migrations do fork usam a faixa 9001 em diante** (`<timestamp>_9001_<slug>.sql`,

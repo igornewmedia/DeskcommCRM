@@ -35,7 +35,7 @@ alvo="$(ultima_versao_original)"
 
 echo "Versão incorporada: ${atual} | última versão do original: ${alvo}"
 if [ "$atual" = "$alvo" ]; then
-  echo "Nada novo. Até a próxima semana."
+  echo "Nada novo. Até a próxima conferência."
   exit 0
 fi
 if [ "$(printf '%s\n%s\n' "$atual" "$alvo" | sort -V | tail -1)" = "$atual" ]; then
