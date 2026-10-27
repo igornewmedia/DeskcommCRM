@@ -172,10 +172,10 @@ transporte pelo `provider` da sessão do canal (`app/api/v1/messages/_handler.ts
 | PDF | Texto extraído (até 8.000 caracteres); com multimodal, também o arquivo. Documento que não é PDF: **nada**. | **[verificado]** `derive.ts` |
 | Vídeo | Desligado por padrão ("vídeo com a leitura desligada, que é o padrão"). Ligado, vira áudio + quadros. | **[verificado]** `derivable.ts` (comentário de `DERIVACAO_TERMINADA`) |
 | Sticker (figurinha) | **Nada** (sem derivado). Quando a mídia não pode ser lida, o modelo recebe o marcador `"[o cliente enviou uma mídia que não consegui interpretar]"`. | **[verificado]** `derive.ts`, `derivable.ts` (`MARCADOR_NAO_LIDA`) |
-| Reação a story / reação a mensagem | **NÃO EXISTE** no parser do Instagram: os eventos aceitos são só `message.received/sent/delivered/read/failed`. | **[verificado]** `parser.ts:7-13` |
-| Resposta a story | Não há campo de story no parser. Se a Zernio mandar como `message.received` com texto/anexo, entra como mensagem comum, **sem** dizer que é resposta a story. | **[verificado]** schema; **[inferido]** o formato da Zernio |
-| Compartilhamento de post | Mesmo caso: entra só se vier como anexo `{type,url}`; nada identifica que é um post. | **[inferido]** |
-| Mensagem vinda de anúncio (click-to-DM) e origem do anúncio | **NÃO chega à IA no Instagram.** O parser grava `referral: null` sempre (`parser.ts:76`). O bloco "## Origem deste contato — o anúncio que ele clicou" existe na abertura do turno (`abertura/ritual.ts:117`), mas só é preenchido pelos canais que trazem `referral` (WhatsApp oficial). | **[verificado]** |
+| Reação a mensagem | **Registrada, sem disparar a IA.** `reaction.received` (documentado pela Zernio: `action`, `emoji`, `platformMessageId`) vira linha `type='reaction'` ligada à mensagem reagida (`lib/channels/reacao.ts`, a mesma do WhatsApp), aparece sobre o balão na conversa, não move a conversa e o banco não emite evento para a IA. Emoji vazio = reação removida. Conta conectada antes desta versão recebe o evento depois de **"Ressincronizar webhook"** (Conexões › Redes sociais). Reação a **story**: a Zernio não documenta campo de story na reação; se chegar, entra como reação comum, ligada à mensagem citada. | **[verificado]** `parser.ts` (`parseSocialReaction`), `social/ingest.ts`; **[inferido]** reação a story |
+| Resposta a story / menção em story | Anexo de tipo `story_reply`/`story*` ganha o marcador **"[o cliente respondeu ao seu story]"** antes do texto; `story_mention`, **"[o cliente mencionou você no story dele]"**. Os nomes de tipo são os da Meta, **não medidos** num payload real da Zernio (a documentação dela não descreve). A descrição da imagem do story por visão **não** foi ligada: o anexo de story não passa pela derivação de imagem. | **[verificado]** o marcador (`marcadorDoAnexo`); **[inferido]** o formato da Zernio |
+| Compartilhamento de post | Anexo `share`/`ig_post`/`ig_reel` ganha o marcador **"[o cliente compartilhou um post do Instagram]"**. Mesma ressalva: tipos não medidos em payload real; a imagem do post não é descrita por visão. | **[verificado]** marcador; **[inferido]** formato |
+| Mensagem vinda de anúncio (click-to-DM) e origem do anúncio | **Chega.** `metadata.referral` (ou `metadata.ad`) com `ad_id` vira `referral` no formato do extrator (`referralDoInstagram`, `parser.ts`), e o bloco "## Origem deste contato — o anúncio que ele clicou" passa a ser preenchido também no Instagram (título do anúncio de `ads_context_data.ad_title`). Link orgânico (sem `ad_id`) não conta como anúncio. Pela documentação da Zernio, o 1º `message.received` do click-to-DM costuma vir sem referral; o dado chega no seguinte. | **[verificado]** parser; **[inferido]** payload real |
 | "Digitando…" | **NÃO EXISTE** no Instagram: a presença só sai quando o adaptador tem `signalTyping`, e só o do WAHA tem (`lib/channels/adapters/waha.ts:182`; `lib/messaging/presenca.ts:91`). A **espera** antes da 1ª bolha continua acontecendo, só não aparece o indicador. | **[verificado]** |
 | Rate limit de envio | `minIntervalMs: 1000` declarado para `zernio_social` (`capabilities.ts:77`). O anti-ban (aquecimento, teto diário, intervalo) é **desligado** porque `banRisk: false` (`pacing/engine.ts:120`). A **janela de horário (padrão 7h às 22h) continua valendo** — ver 3.8. | **[verificado]** |
 
@@ -387,7 +387,7 @@ Novo turno de atendimento: o lead enviou uma mensagem (a última inbound do hist
 <headlines das notas do contato>
 
 ## Compromissos já marcados deste contato          ← só se houver
-## Origem deste contato — o anúncio que ele clicou  ← só se houver referral (não no Instagram)
+## Origem deste contato — o anúncio que ele clicou  ← só se houver referral (WhatsApp oficial e Instagram)
 
 ## Contexto do lead (contato + últimas mensagens)
 (O e-mail não está confirmado no cadastro. ...)    ← só se e-mail for nulo
@@ -1066,7 +1066,7 @@ Tela: **IA › Follow-ups** ("Fluxos"), e no agente o campo "Follow-up". **[veri
 | Pausa após resposta humana | 300.000 | ms | `messages/_handler.ts:415` | não |
 | Devolução automática do handoff | 5–1.440 | minutos | `devolucao-automatica.ts:46-47` | organização |
 | Janela de 24 h (canais oficiais) | 24 | horas | `messaging-window.ts:28` | não |
-| Janela de resposta do canal | 7h–22h, domingo liberado | horário | `pacing/defaults.ts:125-131` | por conexão |
+| Janela de resposta do canal | 7h–22h, domingo liberado | horário | `pacing/defaults.ts:125-131` | por conexão — no Instagram, em Conexões › Redes sociais › Proteção de envio |
 | Intervalo mínimo do Instagram | 1.000 | ms | `capabilities.ts:77` | não |
 | Vetos de vocabulário antes de soltar | 2 | vetos | `inbound-turn.ts:597` | não |
 | Ferramenta HTTP — timeout | 1.000–30.000 (padrão 10.000) | ms | `vocabulario.ts:53-55` | por ferramenta |
@@ -1095,8 +1095,10 @@ A ordem importa: cada passo depende do anterior. **[inferido]** pela ordem que o
 1. **Conexões › Redes sociais** — conectar a conta do Instagram (Zernio). *Pré-requisito:* conta
    profissional do Instagram e credencial da Zernio. *Erro comum:* conta ligada sem webhook de
    recebimento (o canal fica `FAILED` com "recebimento_nao_configurado", `social/adapter.ts` `checkHealth`).
-2. **Conexões › (o canal) › proteção de envio** — ajustar a **janela de resposta** (padrão 7h–22h) se
-   a Nume responde à noite. *Erro comum:* esquecer, e a IA não responder depois das 22h.
+2. **Conexões › Redes sociais › (a conta do Instagram) › "Proteção de envio"** — ajustar a **janela
+   de resposta** (padrão 7h–22h): para 24 horas, início **0** e fim **24**; domingo já vem liberado.
+   (Até a versão deste documento o botão não existia para canal social: a lista de "Números por QR"
+   esconde os canais sociais.) *Erro comum:* esquecer, e a IA não responder depois das 22h.
 3. **IA › Credenciais** — chave do provedor (validada em segundo plano) e chave da OpenAI para áudio e
    base. *Erro comum:* publicar sem credencial validada (`credential_not_validated`).
 4. **IA › Provedores** — modelo do atendimento (com ferramentas) e modelos auxiliares baratos.
@@ -1160,7 +1162,7 @@ Legenda: **Atende** · **Parcial** · **Não atende**.
 
 | # | Requisito | Situação | Como (configuração/recurso) | Referência | Alternativa / a desenvolver |
 |---|---|---|---|---|---|
-| 1 | Responder no Direct, incluindo anúncio, reações e respostas a story | **Parcial** | Texto e anexos do Direct: sim, ligando o agente ao canal `zernio_social` | `selectable.ts:106`; `social/adapter.ts:104` | Anúncio (`referral: null`, `parser.ts:76`), reações (evento não existe) e resposta a story (sem campo): **não**. Desenvolver: ler `referral`, reação e contexto de story do payload da Zernio no `parser.ts` e preencher o bloco de origem. |
+| 1 | Responder no Direct, incluindo anúncio, reações e respostas a story | **Parcial** | Texto e anexos do Direct, ligando o agente ao canal `zernio_social`; anúncio (click-to-DM) preenche a origem; reações ficam no histórico sem disparar a IA; story e post compartilhado chegam com marcador | `social/parser.ts`; `social/ingest.ts` | Formato de story/compartilhamento **não medido** em payload real; imagem do story não é descrita por visão; "digitando…" não existe no Instagram. |
 | 2 | Áudio (transcrição), imagem (descrição), PDF (resumo) | **Atende** (PDF parcial) | Derivação automática; PDF é **extração** de texto (até 8.000), não resumo; com `multimodal_input`, o arquivo vai junto | `derive.ts` | Resumo do PDF: o modelo resume a partir do texto extraído. Precisa da chave da OpenAI ou de modelo com áudio. |
 | 3 | Agrupar mensagens e responder uma vez após ~20 s | **Atende** | "Esperar antes de responder (segundos)" = 20 | `validation.ts:201`; `debounce.ts` | A janela é ancorada na 1ª mensagem (não reinicia a cada mensagem). |
 | 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Resolvido: "Máximo de mensagens por resposta" = 6 no agente (migration 5001). "Digitando…" **não aparece no Instagram** (a pausa acontece). |

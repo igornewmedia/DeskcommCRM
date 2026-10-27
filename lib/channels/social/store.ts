@@ -10,6 +10,16 @@ import { logger } from "@/lib/logger";
 import { inboxSupported, SOCIAL_PROVIDER } from "./catalog";
 import { listSocialAccounts, socialRequest, SocialError } from "./client";
 
+/** O que a assinatura do canal social recebe. `reaction.received`: reações do Direct. */
+export const EVENTOS_DO_WEBHOOK_SOCIAL = [
+  "message.received",
+  "message.sent",
+  "message.delivered",
+  "message.read",
+  "message.failed",
+  "reaction.received",
+] as const;
+
 export async function readSocialIntegration(db: SupabaseClient, org: string) {
   const { data, error } = await db
     .from("channel_integrations")
@@ -249,13 +259,7 @@ export async function connectSocialInbox(
           name: `CRM ${account.platform} ${accountId.slice(-8)}`,
           url: webhookUrl,
           secret,
-          events: [
-            "message.received",
-            "message.sent",
-            "message.delivered",
-            "message.read",
-            "message.failed",
-          ],
+          events: [...EVENTOS_DO_WEBHOOK_SOCIAL],
           isActive: true,
         }),
       ).webhook._id;
@@ -299,8 +303,9 @@ export async function connectSocialInbox(
  * conexão. A gravação é `PUT webhooks/settings` com `webhookId`, `url` e
  * `isActive: true`. A documentação do provedor
  * (docs.zernio.com/webhooks/update-webhook-settings) diz que o PUT é parcial:
- * "only provided fields will be updated" — segredo, eventos e nome ficam como
- * estão. Isso é o que a documentação afirma, não o que esta suíte mede: o
+ * "only provided fields will be updated" — segredo e nome ficam como estão;
+ * os eventos são regravados com `EVENTOS_DO_WEBHOOK_SOCIAL`, para a conta
+ * antiga passar a receber reações. Isso é o que a documentação afirma, não o que esta suíte mede: o
  * provedor aqui é dublado.
  *
  * ─── Por que religa a assinatura ─────────────────────────────────────────────
@@ -362,7 +367,9 @@ export async function ressincronizarAssinaturaSocial(
   await socialRequest(
     integration.key,
     "webhooks/settings",
-    { webhookId: achada._id, url, isActive: true },
+    // `events` vai junto: é como a conta conectada antes da reação passar a ser
+    // assinada recebe `reaction.received` — pelo "Ressincronizar webhook".
+    { webhookId: achada._id, url, isActive: true, events: [...EVENTOS_DO_WEBHOOK_SOCIAL] },
     "PUT",
   );
   // Um 200 não prova a troca: um provedor que ignora o corpo responde ok e a

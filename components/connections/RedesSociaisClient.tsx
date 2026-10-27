@@ -22,6 +22,8 @@ import {
 import { apiClient } from "@/lib/api/client";
 import { canalDesativado } from "@/lib/channels/desativado";
 import { useT } from "@/hooks/i18n/useT";
+import { usePacingKnobs } from "@/hooks/channels/usePacingKnobs";
+import { AntiBanSheet } from "./AntiBanSheet";
 import { ChannelAiAccess } from "./ChannelAiAccess";
 import { RenomearConexao } from "./RenomearConexao";
 
@@ -77,6 +79,11 @@ export function RedesSociaisClient() {
   const [platform, setPlatform] = useState("instagram");
   const [editing, setEditing] = useState(false);
   const [health, setHealth] = useState<Record<string, string>>({});
+  // "Proteção de envio" do canal social: a mesma folha da lista de Conexões,
+  // que esconde os canais sociais. Sem ela, a janela de resposta do Instagram
+  // (`channel_knobs.resposta_*`) não tinha porta na tela.
+  const [antiBanId, setAntiBanId] = useState<string | null>(null);
+  const pacingItems = usePacingKnobs().data?.items ?? [];
   const [removing, setRemoving] = useState<{ account: Account; removeAccount: boolean } | null>(
     null,
   );
@@ -394,6 +401,15 @@ export function RedesSociaisClient() {
                   {account.channel && (
                     <Button
                       variant="outline"
+                      onClick={() => setAntiBanId(account.channel!.id)}
+                      data-testid="protecao-de-envio-social"
+                    >
+                      {t("Proteção de envio")}
+                    </Button>
+                  )}
+                  {account.channel && (
+                    <Button
+                      variant="outline"
                       disabled={!!busy}
                       onClick={() => setRemoving({ account, removeAccount: false })}
                     >
@@ -553,6 +569,13 @@ export function RedesSociaisClient() {
             </AlertDialogContent>
           </AlertDialog>
         </>
+      )}
+      {antiBanId !== null && (
+        <AntiBanSheet
+          item={pacingItems.find((i) => i.channel_session.id === antiBanId) ?? null}
+          canWrite
+          onClose={() => setAntiBanId(null)}
+        />
       )}
     </div>
   );
