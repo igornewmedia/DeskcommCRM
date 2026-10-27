@@ -74,12 +74,25 @@ e quando editar, mexa no mínimo. Migration nova segue a doutrina do original
 `supabase/baseline.sql`. A tarefa de sincronização avisa quando o original usar o mesmo
 número de migration que você.
 
-**Migrations do fork usam a faixa 9001 em diante** (`<timestamp>_9001_<slug>.sql`,
-depois 9002, 9003…). O original numera em sequência (0703 em 20/10/2026, cerca
-de dez por dia), então um número logo acima do dele colide na versão seguinte.
-O teste do projeto só proíbe número repetido, não lacuna. Para saber o próximo
-livre do fork: `ls supabase/migrations | grep -oE '_9[0-9]{3}_' | sort | tail -1`.
-No apêndice do `baseline.sql`, o rótulo acompanha: `-- ---- <coisa> (migration 9001) ----`.
+**Migrations novas do fork usam a faixa 5001 em diante** (`<timestamp>_5001_<slug>.sql`,
+depois 5002, 5003…). O original numera em sequência (máximo + 1, cerca de 200 por
+mês) e em 26/10/2026 pulou de 0807 para 9016 — por isso a faixa antiga do fork
+(9001+) passou a colidir: o PR #3579 do original já usa a 9022. Como ele nunca
+numera abaixo do próprio máximo, o buraco 0808–9015 não volta a ser usado por ele,
+e 5001 fica no meio desse buraco.
+
+As quatro do fork que já rodam em VPS (9001–9004) **não são renumeradas**: o número
+é a versão gravada no banco de quem instalou. Elas são as únicas do fork fora da
+faixa nova, e `tests/unit/fork-faixa-de-migration.test.ts` reprova qualquer outra
+no buraco fora de 5001+ e reprova este parágrafo se ele voltar a apontar 9001.
+
+Para saber o próximo número livre do fork (vazio quer dizer 5001):
+
+```bash
+ls supabase/migrations | sed -nE 's#^[0-9]{14}_(5[0-9]{3})_.*#\1#p' | sort | tail -1
+```
+
+No apêndice do `baseline.sql`, o rótulo acompanha: `-- ---- <coisa> (migration 5001) ----`.
 
 ## Primeira execução
 
