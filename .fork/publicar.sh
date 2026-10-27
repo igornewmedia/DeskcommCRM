@@ -30,7 +30,7 @@ pendentes="$(commits_nao_lancados HEAD "$base")"
 if [ -n "$pendentes" ]; then
   n="$(printf '%s\n' "$pendentes" | grep -c .)"
   echo "::error::A main contém ${n} commit(s) do original que ainda NÃO saíram em versão lançada (depois de ${base})."
-  echo "::error::Publicar agora entregaria código não lançado. Espere a próxima sincronização semanal — ela traz a versão que contém esses commits."
+  echo "::error::Publicar agora entregaria código não lançado. Espere a próxima sincronização — ela traz a versão que contém esses commits."
   exit 1
 fi
 
