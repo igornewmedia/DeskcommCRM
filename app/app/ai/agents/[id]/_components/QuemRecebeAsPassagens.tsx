@@ -37,7 +37,9 @@ export function QuemRecebeAsPassagens(props: {
     };
   }, []);
 
-  const nome = (m: Membro) => m.full_name || m.email || m.user_id.slice(0, 8);
+  // O e-mail vai junto: duas pessoas com o mesmo nome (ou "Dono" em todas) não se distinguem só por ele.
+  const nome = (m: Membro) =>
+    m.full_name && m.email ? `${m.full_name} · ${m.email}` : m.full_name || m.email || m.user_id.slice(0, 8);
   // A pessoa escolhida pode ter saído da equipe: segue na lista, marcada, até alguém trocar.
   const ausente = props.value && membros && !membros.some((m) => m.user_id === props.value);
 

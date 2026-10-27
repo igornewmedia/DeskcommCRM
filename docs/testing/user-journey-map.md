@@ -4126,3 +4126,18 @@ o turno completo do agente com o modelo de verdade (a ferramenta foi chamada
 direto). Medido por teste: PATCH parcial preserva as outras chaves, PUT
 substitui, tipo errado é 422 (`app/api/v1/products/[id]/route.test.ts`) e o
 isolamento entre organizações (`tests/invariants/rls-isolation.test.ts`).
+
+### Quem recebe as passagens, por agente (fork, migration 5003)
+
+Agentes › (agente) › aba Configuração › card "Passar para uma pessoa" › "Quem
+recebe as passagens". Provado pela tela em ambiente local (build de produção na
+porta 3001): o seletor lista quem pode receber conversa (`/api/v1/team/assignable`);
+escolher uma pessoa e "Salvar rascunho" gravou `handoff_target_user_id` na versão
+rascunho, conferido no banco e depois devolvido a vazio —
+`evidence/quem-recebe-as-passagens/01-campo-no-agente.jpg`. Achado na prova: três
+pessoas com o mesmo nome ("Dono") ficavam indistinguíveis; o seletor passou a
+mostrar nome e e-mail. O efeito (atribuição, aviso da Central com dono, caso que
+não cala a IA, pessoa que saiu da equipe) é medido em
+`tests/invariants/passagem-com-destinatario.test.ts`, e o push direcionado em
+`tests/unit/push-dos-avisos.test.ts`. Não medido: o push chegando num celular
+real, e a passagem disparada por um turno com modelo de verdade.
