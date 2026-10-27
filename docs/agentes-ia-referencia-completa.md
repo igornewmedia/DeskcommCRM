@@ -563,8 +563,12 @@ Há **duas** janelas diferentes:
 
 - **Fuso:** o do agente (`business_hours.timezone`) para a janela 1; o da conexão para a janela 2; o da
   organização para o bloco `## Agora` (`fuso-da-org.ts`). Padrão `America/Sao_Paulo`.
-- **Feriados:** **NÃO EXISTE** calendário de feriados no agente. **[inferido]** (não achei referência no
-  motor).
+- **Feriados** (Configurações › Empresa › card "Feriados", `organizations.settings.feriados`;
+  desligado por padrão). Ligado, o `## Agora` ganha "Hoje é feriado: X." (ou "Hoje não é feriado."),
+  "Amanhã é feriado: X." quando for o caso e "Próximo dia útil (segunda a sexta, sem feriado): …".
+  Nacionais do Brasil calculados por ano, sem serviço externo (`lib/lgpd/holidays-br.ts`, que conta
+  Carnaval e Corpus Christi como feriado); próprios da empresa numa lista editável (data e nome).
+  **[verificado]** `lib/tempo/feriados.test.ts`.
 
 ### 3.9 Estados do agente, versões
 
@@ -1167,7 +1171,7 @@ Legenda: **Atende** · **Parcial** · **Não atende**.
 | 2 | Áudio (transcrição), imagem (descrição), PDF (resumo) | **Atende** (PDF parcial) | Derivação automática; PDF é **extração** de texto (até 8.000), não resumo; com `multimodal_input`, o arquivo vai junto | `derive.ts` | Resumo do PDF: o modelo resume a partir do texto extraído. Precisa da chave da OpenAI ou de modelo com áudio. |
 | 3 | Agrupar mensagens e responder uma vez após ~20 s | **Atende** | "Esperar antes de responder (segundos)" = 20 | `validation.ts:201`; `debounce.ts` | A janela é ancorada na 1ª mensagem (não reinicia a cada mensagem). |
 | 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Resolvido: "Máximo de mensagens por resposta" = 6 no agente (migration 5001). "Digitando…" **não aparece no Instagram** (a pausa acontece). |
-| 5 | Data, dia da semana e hora de Brasília (saudação, corte 14h, dias úteis em SP) | **Parcial** | Bloco `## Agora` em todo turno, com dia da semana, data, hora e fuso | `lib/tempo/agora.ts:77` | Feriados: **não existe** calendário. Desenvolver uma ferramenta de código com a lista de feriados, ou colocar a lista na Memória. Fuso da organização em `America/Sao_Paulo`. |
+| 5 | Data, dia da semana e hora de Brasília (saudação, corte 14h, dias úteis em SP) | **Atende** | Bloco `## Agora` em todo turno, com dia da semana, data, hora e fuso; com **Feriados** ligado (Configurações › Empresa), diz se hoje é feriado e o próximo dia útil | `lib/tempo/agora.ts`; `lib/tempo/feriados.ts` | Feriados municipais de São Paulo/Brasília: cadastrar como feriados próprios. |
 | 6 | Emojis nos orçamentos, várias linhas | **Atende** | Nenhum portão remove emoji nem quebra de linha | `before-send.ts:1043` | A plataforma orienta "emoji só se o lead usar"; o prompt precisa dizer que nos orçamentos é obrigatório. |
 | 7 | Buscar por nome, capacidade e cor; preço por cor no iPhone | **Atende** | Um produto por configuração **e cor**; capacidade e **cor** são pesquisadas (migration 5002) | `busca.ts` (`textoDoAlvo`) | — Preço único das outras linhas: um produto por configuração. |
 | 8 | Quatro valores (cartão, 3x, 12x, à vista) calculados por fórmula fixa | **Atende** com ferramenta | Preço à vista no catálogo + **ferramenta de código JS** com a fórmula (5.4); o prompt manda nunca calcular de cabeça | `codigo.ts` | A fórmula (`Tabela_Margem_v2.md`) precisa ser escrita no código. |

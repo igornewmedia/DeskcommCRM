@@ -99,6 +99,24 @@ export const DICIONARIO: Traducoes = {
   "Código JS": { es: "Código JS" },
   // Fork 9004 — capacidade do produto ("Capacidade" já existe mais abaixo).
   "Ex.: 128GB": { es: "Ej.: 128GB" },
+  // Fork — feriados no bloco ## Agora.
+  "Feriados": { es: "Feriados" },
+  "Com a opção ligada, o agente de IA sabe se hoje é feriado e qual é o próximo dia útil (segunda a sexta, sem feriado), para prometer prazo e entrega certos.":
+    {
+      es: "Con la opción activada, el agente de IA sabe si hoy es feriado y cuál es el próximo día hábil (lunes a viernes, sin feriado), para prometer plazos y entregas correctos.",
+    },
+  "Informar feriados ao agente de IA": { es: "Informar feriados al agente de IA" },
+  "Incluir os feriados nacionais do Brasil (calculados automaticamente a cada ano)":
+    {
+      es: "Incluir los feriados nacionales de Brasil (calculados automáticamente cada año)",
+    },
+  "Feriados próprios da empresa": { es: "Feriados propios de la empresa" },
+  "Nenhum feriado próprio cadastrado.": { es: "Ningún feriado propio registrado." },
+  "Aniversário de Brasília": { es: "Aniversario de Brasilia" },
+  "Salvar feriados": { es: "Guardar feriados" },
+  "Feriados salvos.": { es: "Feriados guardados." },
+  "Não foi possível salvar os feriados.": { es: "No fue posible guardar los feriados." },
+  "Informe a data e o nome do feriado.": { es: "Informa la fecha y el nombre del feriado." },
   // Fork 5004 — reiniciar memória da IA.
   "Para testar o agente do zero: a IA esquece o que sabia deste contato. As mensagens ficam.":
     {

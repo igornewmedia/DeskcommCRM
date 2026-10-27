@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Art15Form } from "./_art15";
 import { ZonaDePerigoDaOrganizacao } from "./_danger-zone";
 import { InboxDaEmpresaForm } from "./_inbox";
+import { FeriadosDaEmpresaForm } from "./_feriados";
+import { feriadosDasSettings } from "@/lib/tempo/feriados";
 import { TenantForm } from "./_form";
 import { InterfaceDaEmpresaForm } from "./_interface";
 import { camposDoNegocioDosFunis } from "@/lib/leads/compras-do-contato";
@@ -117,6 +119,7 @@ export default async function TenantSettingsPage() {
         />
       )}
       {row && <InboxDaEmpresaForm initial={row.interface_settings} />}
+      {row && <FeriadosDaEmpresaForm initial={feriadosDasSettings(row.settings)} />}
       {row && <ZonaDePerigoDaOrganizacao displayName={row.display_name} />}
     </div>
   );

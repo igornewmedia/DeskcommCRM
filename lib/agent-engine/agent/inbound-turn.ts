@@ -256,7 +256,7 @@ import {
 } from '@/lib/ai/decisao/manipulacao';
 import type { DependenciasDoPonto } from '@/lib/ai/decisao/ponto';
 import { perguntarUrgenciaAoJev, registrarUrgenciaDoJev } from '@/lib/ai/decisao/urgencia';
-import { fusoDaOrganizacao } from './fuso-da-org';
+import { feriadosDaOrganizacao, fusoDaOrganizacao } from './fuso-da-org';
 import { renderAgora } from '@/lib/tempo/agora';
 import { decidirElegibilidadeDaConversa } from '@/lib/ai/elegibilidade/consulta-pg';
 import {
@@ -2275,6 +2275,7 @@ async function executarTurnoDoAgente(
   // longe do ponto de uso, para não virar duas respostas para a mesma pergunta.
   // Nunca lança e nunca vem vazio (ver `fuso-da-org.ts`).
   const fusoDaOrg = await fusoDaOrganizacao(pool, tenantId, runLog);
+  const feriadosDaOrg = await feriadosDaOrganizacao(pool, tenantId);
 
   // F4-06 (acceptance 2): lead em handoff humano → NO-OP no INÍCIO do turno, antes de
   // qualquer chamada de modelo/CRM. O bot silenciou (bot_silenced_until='infinity', cache
@@ -5288,7 +5289,7 @@ async function executarTurnoDoAgente(
     // turnos conversacionais (inbound, follow-up e resposta a caso), então um
     // ponto só cobre os três — e alcança de carona a chamada de fechamento, que
     // reusa `openingTextOnly` e é onde nasce o `prazo` ISO da declaração.
-    const agoraBlock = renderAgora(clock(), fusoDaOrg);
+    const agoraBlock = renderAgora(clock(), fusoDaOrg, feriadosDaOrg);
     const openingSuffixes = [
       agoraBlock,
       matchedSkillsBlock,

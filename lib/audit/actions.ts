@@ -1235,6 +1235,8 @@ export const AUDIT_ACTIONS = [
   // Como a IA da empresa trata o estoque (`organizations.settings.catalogo.modo_estoque`),
   // gravado pelo cartão do topo de /app/products. Muda o que a IA oferece como disponível.
   "settings.catalog_stock_mode_updated",
+  // Feriados da empresa no bloco ## Agora do agente (fork).
+  "settings.holidays_updated",
 
   // Planos de tarefa (#1752): a lista `settings.task_plans` mudou pela rota
   // `settings/task-plans` — mesma família de `campaign.settings_updated`.
