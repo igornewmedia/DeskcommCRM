@@ -20,7 +20,7 @@
  */
 import type pg from 'pg';
 
-import { loadConversationAgentConfig, loadPublishedAgentConfigById } from './agent-config';
+import { loadConversationAgentConfig, loadPublishedAgentConfigById, type PublishedAgentConfig } from './agent-config';
 import type { Logger } from '../obs/logger';
 
 export async function destinatarioDaPassagem(
@@ -29,21 +29,18 @@ export async function destinatarioDaPassagem(
   log?: Logger,
 ): Promise<string | null> {
   try {
-    let alvo: string | null = null;
+    let agentConfig: PublishedAgentConfig | null = null;
     if (ids.agentId) {
-      alvo = (await loadPublishedAgentConfigById(db, ids.tenantId, ids.agentId))?.handoffTargetUserId ?? null;
+      agentConfig = await loadPublishedAgentConfigById(db, ids.tenantId, ids.agentId);
     } else {
       const { rows } = await db.query<{ channel_session_id: string | null }>(
         'select channel_session_id from conversations where organization_id = $1 and id = $2',
         [ids.tenantId, ids.conversationId],
       );
       const canal = rows[0]?.channel_session_id;
-      if (canal) {
-        alvo =
-          (await loadConversationAgentConfig(db, ids.tenantId, ids.conversationId, canal))?.handoffTargetUserId ??
-          null;
-      }
+      if (canal) agentConfig = await loadConversationAgentConfig(db, ids.tenantId, ids.conversationId, canal);
     }
+    const alvo = agentConfig?.handoffTargetUserId ?? null;
     if (!alvo) return null;
     const { rows: membro } = await db.query(
       `select 1 from user_organizations

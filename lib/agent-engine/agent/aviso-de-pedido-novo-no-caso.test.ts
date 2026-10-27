@@ -262,8 +262,10 @@ describe("pedido novo num caso já aberto (#3097)", () => {
 
     expect(res).toEqual({ ok: true, caseId: CASO_ANTIGO });
     // O caso e o evento `opened` nascem no MESMO statement atômico — uma ida ao
-    // pool, como antes da mudança (a linha em si é do Postgres; ver o invariante).
-    expect(consultas).toHaveLength(1);
+    // pool para ESCREVER, como antes da mudança (a linha em si é do Postgres; ver o
+    // invariante). Depois dela vem só a LEITURA de "Quem recebe as passagens"
+    // (migration 5003), que sem destinatário não escreve nada.
+    expect(consultas.filter((c) => /\binsert\b|\bupdate\b/i.test(c.sql))).toHaveLength(1);
     expect(consultas[0]!.sql).toContain("insert into agent_cases");
     expect(consultas[0]!.sql).toContain("'opened'");
   });
