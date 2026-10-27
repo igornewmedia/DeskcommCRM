@@ -361,6 +361,12 @@ beforeAll(() => {
             values (v_org, 'RLS Aparelho', '128GB', 100);
         end if;
 
+        -- 5002 — atributos personalizados de produto. Mesmo molde do catálogo.
+        if not exists (select 1 from public.catalog_product_attributes where organization_id = v_org) then
+          insert into public.catalog_product_attributes (organization_id, chave, rotulo, tipo)
+            values (v_org, 'rls_atributo', 'RLS Atributo', 'booleano');
+        end if;
+
         -- crm_tasks (migration 0210): o que o time combinou fazer, com prazo.
         -- Entra COM o vínculo de lead porque a tarefa presa a um negócio é o
         -- caso que cruza duas tabelas tenant-aware — se a policy vazasse, o
@@ -708,6 +714,8 @@ export const TABLES = [
   // migration 9003 — aparelhos aceitos na troca. Mesmo molde de catalog_products:
   // leitura org-scoped, escrita manager+ (medida pela rota, não aqui).
   "catalog_trade_in_devices",
+  // migration 5002 — atributos personalizados de produto, mesmo molde.
+  "catalog_product_attributes",
   // migration 0210 — as tarefas do CRM. A leitura é org-scoped sem gate de papel
   // (o `viewer` precisa ver o que o time combinou); a ESCRITA exige `agent`, e
   // esse segundo eixo NÃO é medido aqui — o usuário semeado é `agent`, então o

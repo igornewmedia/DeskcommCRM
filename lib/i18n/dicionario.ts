@@ -99,6 +99,54 @@ export const DICIONARIO: Traducoes = {
   "Código JS": { es: "Código JS" },
   // Fork 9004 — capacidade do produto ("Capacidade" já existe mais abaixo).
   "Ex.: 128GB": { es: "Ej.: 128GB" },
+  // Fork 5002 — atributos personalizados de produto.
+  "Atributos dos produtos": { es: "Atributos de los productos" },
+  "As informações próprias da loja em cada produto, que o atendente de IA lê no catálogo.":
+    {
+      es: "La información propia de la tienda en cada producto, que el agente de IA lee en el catálogo.",
+    },
+  "Atributos": { es: "Atributos" },
+  "(não informado)": { es: "(no informado)" },
+  "Informações próprias da sua loja em cada produto, como pronta entrega, preço no cartão ou versão. Elas aparecem no cadastro do produto e o atendente de IA as lê ao consultar o catálogo.":
+    {
+      es: "Información propia de tu tienda en cada producto, como entrega inmediata, precio con tarjeta o versión. Aparece en el registro del producto y el agente de IA la lee al consultar el catálogo.",
+    },
+  "Limite de 30 atributos atingido": { es: "Límite de 30 atributos alcanzado" },
+  "Novo atributo": { es: "Nuevo atributo" },
+  "Pronta entrega": { es: "Entrega inmediata" },
+  "Chave (usada pela API e pelos filtros da IA)": { es: "Clave (usada por la API y los filtros de la IA)" },
+  "Valor em dinheiro": { es: "Valor en dinero" },
+  "Opções (uma por linha ou separadas por vírgula)": { es: "Opciones (una por línea o separadas por coma)" },
+  "O que significa, para a IA": { es: "Qué significa, para la IA" },
+  "Ex.: sim = produto em estoque em Brasília, pagamento na entrega":
+    {
+      es: "Ej.: sí = producto en stock en Brasilia, pago contra entrega",
+    },
+  "A IA vê este atributo ao consultar o catálogo": { es: "La IA ve este atributo al consultar el catálogo" },
+  "Entra na busca (o que o cliente escreve pode achar o produto por este valor)":
+    {
+      es: "Entra en la búsqueda (lo que escribe el cliente puede encontrar el producto por este valor)",
+    },
+  "Nenhum atributo definido ainda": { es: "Ningún atributo definido todavía" },
+  "Sem atributos, o cadastro do produto tem só os campos de sempre.":
+    {
+      es: "Sin atributos, el registro del producto tiene solo los campos de siempre.",
+    },
+  "a IA vê": { es: "la IA lo ve" },
+  "oculto da IA": { es: "oculto para la IA" },
+  "entra na busca": { es: "entra en la búsqueda" },
+  "Atributo salvo.": { es: "Atributo guardado." },
+  "Remover este atributo? O valor dele some de todos os produtos.":
+    {
+      es: "¿Eliminar este atributo? Su valor desaparece de todos los productos.",
+    },
+  "valor inválido. Escreva assim: 1.299,90": { es: "valor inválido. Escríbelo así: 1.299,90" },
+  "número inválido.": { es: "número inválido." },
+  "Atributo inválido.": { es: "Atributo inválido." },
+  "Limite de 30 atributos por organização.": { es: "Límite de 30 atributos por organización." },
+  "Já existe um atributo com essa chave.": { es: "Ya existe un atributo con esa clave." },
+  "Uma lista precisa de ao menos uma opção.": { es: "Una lista necesita al menos una opción." },
+  "Atributo não encontrado.": { es: "Atributo no encontrado." },
   "Máximo de mensagens por resposta (1–10)": { es: "Máximo de mensajes por respuesta (1–10)" },
   "Quantas mensagens o agente pode mandar numa mesma resposta. As partes que passarem do limite vão juntas na última mensagem. Vazio usa o padrão da instalação.":
     {

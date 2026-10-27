@@ -709,14 +709,18 @@ nos arquivos de `lib/mcp/tools/catalogo/`:
 Fonte: `lib/mcp/tools/comercio.ts:92-397` e `lib/catalogo/busca.ts`. **[verificado]**
 
 - **Entrada:** `termo` (texto, mínimo 2), `limite` (1–20, padrão **8**), `somente_disponiveis`
-  (padrão **verdadeiro**).
+  (padrão **verdadeiro**) e `filtros` (opcional): filtro **exato** por atributo personalizado, pela
+  chave, ex.: `{"pronta_entrega": true}` ou `{"versao": "Anatel"}`. Texto compara sem maiúsculas;
+  booleano ausente conta como falso. Chave que a loja não tem é ignorada e avisada em `mensagem`.
 - **Varredura:** lê `catalog_products` da organização com `ativo = true`, em páginas de 1.000
   (`TAMANHO_DA_PAGINA`) até 10 páginas (`PAGINAS_MAXIMAS`) = **10.000 produtos**; passou disso, a busca
   avisa "varredura parcial".
 - **Normalização:** sem acento, minúsculas, pontuação vira espaço (`normalizar`, `busca.ts:44`). Ignora
   `de, do, da, com, para, por, the, e, o, a, um, uma`.
-- **Campos pesquisados:** `nome`, `marca`, `categoria`, `capacidade` e `codigo` (`pontuar`,
-  `busca.ts:108`). **`cor` e `descricao` NÃO são pesquisados.**
+- **Campos pesquisados:** `nome`, `marca`, `categoria`, `capacidade`, **`cor`**, `codigo` e os
+  **atributos marcados como pesquisáveis** (`textoDoAlvo`, `busca.ts`; migration 5002). Atributo
+  booleano pesquisável entra pelo rótulo quando verdadeiro ("pronta entrega" acha quem tem).
+  **`descricao` NÃO é pesquisada.**
 - **Números são filtro exato:** "256gb" vira o número `256`, que precisa aparecer no alvo
   (com ou sem unidade). Palavras são difusas: igual = 1; prefixo (≥ 3 letras) = 0,9; 1 edição (≥ 4
   letras) = 0,75 (mesma inicial) ou 0,5; 2 edições (≥ 5 letras) = 0,6. Nota = média das palavras.
@@ -739,23 +743,39 @@ Fonte: `lib/mcp/tools/comercio.ts:92-397` e `lib/catalogo/busca.ts`. **[verifica
       "cor": "Laranja",
       "capacidade": "256GB",
       "disponivel": true,
-      "fotos": 2
+      "fotos": 2,
+      "atributos": { "Pronta entrega": "sim", "Preço no cartão": "R$ 7.851,00" }
     }
   ],
+  "legenda_dos_atributos": {
+    "Pronta entrega": "sim = em estoque em Brasília, pagamento na entrega (filtro: pronta_entrega)"
+  },
   "empate": false
 }
 ```
+
+  `atributos` traz só os **visíveis para a IA**, já formatados (moeda em reais, booleano em
+  "sim"/"não"). O significado de cada um vem **uma vez** em `legenda_dos_atributos` (só os que têm
+  descrição e aparecem no resultado), com a chave para usar em `filtros`. **[verificado]**
+  (`tests/unit/atributos-na-busca-da-ia.test.ts`).
 
   A quantidade em estoque **não** vai ao modelo. Vazio: `{"produtos": [], "motivo":
   "nao_encontrado" | "varredura_parcial" | "sem_estoque", "mensagem": "..."}`.
 - **Campos do produto** (`lib/schemas/produtos.ts`): `codigo` (auto), `nome`, `descricao`, `marca`,
   `categoria`, `cor`, `capacidade`, `preco_cents`, `moeda`, `custo_cents`, `controla_estoque`,
   `quantidade`, `ativo`, `origem`, `imagem_url`, `fotos`. `custo_cents` **não** vai ao modelo.
-- **Campos personalizados, JSON ou metadados no produto: NÃO EXISTE.**
+- **Atributos personalizados** (migration 5002): cada organização define os seus em **Produtos ›
+  Atributos dos produtos** (link no topo de Produtos; só `manager`+ altera), até **30**. Cada atributo
+  tem chave (slug único), nome, tipo (`texto`, `numero`, `booleano`, `moeda` em centavos, `lista` de
+  opções fixas), descrição para a IA, "a IA vê" (padrão sim), "entra na busca" (padrão não) e ordem.
+  Os valores ficam em `catalog_products.atributos` (jsonb), validados contra a definição em toda
+  escrita (tela e API); tipo errado ou chave inexistente = 422. Remover um atributo apaga o valor dele
+  de todos os produtos. Chave e tipo não mudam depois de criados. **[verificado]**
 - **Variações** (um produto com várias cores ou capacidades e preço por variação): **NÃO EXISTE.**
   Cada combinação precisa ser **um produto**.
-- **Mais de uma tabela de preço por produto** (por região ou modalidade): **NÃO EXISTE.** Um
-  `preco_cents` por produto.
+- **Mais de uma tabela de preço por produto** (por região ou modalidade): um `preco_cents` por
+  produto, mais quantos atributos do tipo `moeda` a loja definir (ex.: "Preço no cartão",
+  "Preço Brasília").
 - **Uma organização com estoque e outra sem:** há uma sessão em andamento que está implementando essa
   configuração por empresa. Na `v1.89.2` vale a regra acima. **[verificado]** o código atual.
 
@@ -1134,10 +1154,10 @@ Legenda: **Atende** · **Parcial** · **Não atende**.
 | 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Resolvido: "Máximo de mensagens por resposta" = 6 no agente (migration 5001). "Digitando…" **não aparece no Instagram** (a pausa acontece). |
 | 5 | Data, dia da semana e hora de Brasília (saudação, corte 14h, dias úteis em SP) | **Parcial** | Bloco `## Agora` em todo turno, com dia da semana, data, hora e fuso | `lib/tempo/agora.ts:77` | Feriados: **não existe** calendário. Desenvolver uma ferramenta de código com a lista de feriados, ou colocar a lista na Memória. Fuso da organização em `America/Sao_Paulo`. |
 | 6 | Emojis nos orçamentos, várias linhas | **Atende** | Nenhum portão remove emoji nem quebra de linha | `before-send.ts:1043` | A plataforma orienta "emoji só se o lead usar"; o prompt precisa dizer que nos orçamentos é obrigatório. |
-| 7 | Buscar por nome, capacidade e cor; preço por cor no iPhone | **Parcial** | Um produto por configuração **e cor**; capacidade é pesquisada | `busca.ts:108` | A **cor não é pesquisada**: incluir a cor no **nome** do produto ("iPhone 17 Pro Max 256GB Laranja") ou desenvolver a cor no `pontuar`. Preço único das outras linhas: um produto por configuração. |
+| 7 | Buscar por nome, capacidade e cor; preço por cor no iPhone | **Atende** | Um produto por configuração **e cor**; capacidade e **cor** são pesquisadas (migration 5002) | `busca.ts` (`textoDoAlvo`) | — Preço único das outras linhas: um produto por configuração. |
 | 8 | Quatro valores (cartão, 3x, 12x, à vista) calculados por fórmula fixa | **Atende** com ferramenta | Preço à vista no catálogo + **ferramenta de código JS** com a fórmula (5.4); o prompt manda nunca calcular de cabeça | `codigo.ts` | A fórmula (`Tabela_Margem_v2.md`) precisa ser escrita no código. |
-| 9 | Duas tabelas de preço (principal e pronta entrega Brasília) | **Não atende** | — | `comercio.ts` (um `preco_cents`) | Alternativas: produtos duplicados com categoria "Pronta entrega DF"; ou ferramenta HTTP para a planilha atual devolver as duas tabelas. Desenvolver: segundo preço por produto ou tabela de preço por região. |
-| 10 | Versões Padrão (eSIM) × Anatel (chip físico) | **Parcial** | Produtos separados ("… eSIM" / "… Anatel") e regra no prompt | catálogo | Sem campo próprio; depende do nome do produto e do prompt. |
+| 9 | Duas tabelas de preço (principal e pronta entrega Brasília) | **Atende** | Atributo booleano "Pronta entrega" + atributo `moeda` para o preço de Brasília; a IA filtra com `filtros: {"pronta_entrega": true}` | `comercio.ts`; migration 5002 | Alternativa antiga (produtos duplicados) deixa de ser necessária. |
+| 10 | Versões Padrão (eSIM) × Anatel (chip físico) | **Atende** | Atributo `lista` "Versão" (Padrão, Anatel), pesquisável; filtro `{"versao": "Anatel"}` | migration 5002 | Regra de quando oferecer cada versão continua no prompt. |
 | 11 | Consultar se aparelho usado é aceito, sem informar valor, e encaminhar | **Atende** | **Produtos › Troca** com os modelos aceitos (abatimento 0) + prompt "não informe valor" + passagem para humano | `comercio.ts:398` | A descrição da ferramenta fala em descontar o abatimento; o prompt precisa sobrepor. |
 | 12 | Entrada no Pix + restante parcelado, mesma fórmula | **Atende** com ferramenta | Ferramenta de código com `valor_a_vista`, `entrada`, `parcelas` (exemplo 5.4) | `codigo.ts` | — |
 | 13 | Passar para o Gabriel com motivo e resumo estruturado, pausar e não vender | **Parcial** | `request_human_handoff` com `por_que`, `o_que_tentei`, `cliente_quer`; pausa por `force_human` | `human-handoff.ts` | Não há campos estruturados (produto, cor, modalidade, preço, região) nem destinatário: o resumo vai em texto nos campos livres; direcionar ao Gabriel pela distribuição ou `crm_assign_conversation`. |

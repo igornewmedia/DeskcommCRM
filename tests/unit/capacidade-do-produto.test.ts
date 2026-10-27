@@ -31,6 +31,7 @@ const PRODUTO: Produto = {
   ativo: true,
   origem: "manual",
   imagem_url: null,
+  atributos: {},
   fotos: [],
   updated_at: "2026-10-26T12:00:00Z",
 };

@@ -801,6 +801,9 @@ export const AUDIT_ACTIONS = [
   "catalog_trade_in_device.created",
   "catalog_trade_in_device.updated",
   "catalog_trade_in_device.deleted",
+  "catalog_product_attribute.created",
+  "catalog_product_attribute.updated",
+  "catalog_product_attribute.deleted",
   "catalog_product.imported",
   // As fotos do produto (migration 0390): subir uma, e reordenar/remover.
   "catalog_product.photo_added",

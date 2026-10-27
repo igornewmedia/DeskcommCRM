@@ -384,6 +384,16 @@ export const NAV_CATALOG = [
     section: "Preparar a venda",
   },
   {
+    // Atributos personalizados de produto (migration 5002). Sem `sidebar`, como
+    // os aparelhos de troca: chega-se pelo link no topo de Produtos.
+    href: "/app/products/atributos",
+    label: "Atributos dos produtos",
+    description: "As informações próprias da loja em cada produto, que o atendente de IA lê no catálogo.",
+    icon: "Storefront",
+    group: "crm",
+    section: "Preparar a venda",
+  },
+  {
     href: "/app/imports",
     label: "Importações",
     description: "Lotes CSV/XLSX de empresas, pessoas e telefones.",

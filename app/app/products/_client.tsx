@@ -15,7 +15,10 @@ import { precoParaCentavos, type Produto } from "@/lib/schemas/produtos";
 
 import type { ModoDeEstoque } from "@/lib/catalogo/modo-de-estoque";
 
+import { CamposDosAtributos } from "./_atributos";
 import { EdicaoDoProduto } from "./_edicao";
+import { corpoDosAtributos, rascunhoDosAtributos, type RascunhoDosAtributos } from "@/lib/catalogo/atributos-no-formulario";
+import type { AtributoDeProduto } from "@/lib/schemas/atributos-de-produto";
 import { ModoDeEstoqueDaEmpresa } from "./_modoDeEstoque";
 
 interface Textos {
@@ -232,6 +235,7 @@ export function ProdutosClient({
   urlsDasFotos,
   podeEditar,
   modoEstoque = "somente_com_estoque",
+  atributos = [],
   textos,
 }: {
   /** A página atual, já filtrada no servidor (ver `lib/catalogo/busca-da-tela.ts`). */
@@ -244,6 +248,8 @@ export function ProdutosClient({
   urlsDasFotos: Record<string, string>;
   podeEditar: boolean;
   modoEstoque?: ModoDeEstoque;
+  /** Atributos personalizados da organização (migration 5002). */
+  atributos?: AtributoDeProduto[];
   textos: Textos;
 }) {
   const t = useT();
@@ -267,6 +273,9 @@ export function ProdutosClient({
   const semControle = modoEstoque === "sem_controle";
   const novoRascunho = React.useMemo<Rascunho>(() => ({ ...VAZIO, controla_estoque: !semControle }), [semControle]);
   const [rascunho, setRascunho] = React.useState<Rascunho>(novoRascunho);
+  const [rascunhoAtributos, setRascunhoAtributos] = React.useState<RascunhoDosAtributos>(() =>
+    rascunhoDosAtributos(atributos, {}),
+  );
   const [salvando, setSalvando] = React.useState(false);
   const [importando, setImportando] = React.useState(false);
   const [resumo, setResumo] = React.useState<ResumoDaImportacao | null>(null);
@@ -300,11 +309,18 @@ export function ProdutosClient({
       toast.error(corpo.erro as string);
       return;
     }
+    const attrs = corpoDosAtributos(atributos, rascunhoAtributos, t);
+    if (attrs.erro) {
+      toast.error(attrs.erro);
+      return;
+    }
+    if (Object.keys(attrs.atributos).length > 0) corpo.atributos = attrs.atributos;
     setSalvando(true);
     try {
       await apiClient.post("/api/v1/products", corpo);
       toast.success(t("Produto cadastrado"));
       setRascunho(novoRascunho);
+      setRascunhoAtributos(rascunhoDosAtributos(atributos, {}));
       setCriando(false);
       router.refresh();
     } catch (e) {
@@ -358,6 +374,9 @@ export function ProdutosClient({
         <p className="mt-1 text-sm text-muted-foreground">{textos.subtitulo}</p>
         <a href="/app/products/troca" className="mt-1 inline-block text-sm underline" data-testid="link-troca">
           {t("Aparelhos aceitos na troca")}
+        </a>
+        <a href="/app/products/atributos" className="ml-4 mt-1 inline-block text-sm underline" data-testid="link-atributos">
+          {t("Atributos dos produtos")}
         </a>
       </header>
 
@@ -538,6 +557,12 @@ export function ProdutosClient({
               </span>
             </label>
           </div>
+          <CamposDosAtributos
+            defs={atributos}
+            valor={rascunhoAtributos}
+            onChange={setRascunhoAtributos}
+            prefixo="produto"
+          />
 
           <label className="mt-3 flex items-center gap-2 text-sm">
             <input
@@ -655,7 +680,7 @@ export function ProdutosClient({
               // `key` porque o painel fica na MESMA posição do DOM ao trocar de
               // produto: sem ela o React reaproveita o estado e o formulário
               // abriria preenchido com o produto anterior.
-              <EdicaoDoProduto key={p.id} produto={p} aoFechar={() => setEditando(null)} />
+              <EdicaoDoProduto key={p.id} produto={p} atributos={atributos} aoFechar={() => setEditando(null)} />
             ) : null}
             </li>
             );

@@ -55,6 +55,7 @@ function produto(over: Partial<Produto> = {}): Produto {
     ativo: true,
     origem: "manual",
     imagem_url: null,
+    atributos: {},
     fotos: [],
     updated_at: "2026-09-03T00:00:00.000Z",
     ...over,

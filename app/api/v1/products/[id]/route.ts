@@ -18,6 +18,7 @@ import { type NextRequest } from "next/server";
 import { audit } from "@/lib/audit";
 import { resolveAuthDual, tetoDeEscritaDoToken } from "@/lib/api/auth-dual";
 import { fail, ok } from "@/lib/api/wrappers";
+import { resolverAtributos } from "@/lib/catalogo/atributos";
 import { apagarDoBucket } from "@/lib/catalogo/fotos-no-bucket";
 import { controlaEstoquePadrao, modoDeEstoqueDaOrganizacao } from "@/lib/catalogo/modo-de-estoque";
 import { COLUNAS_DO_PRODUTO, produtoCreateSchema, produtoPatchSchema } from "@/lib/schemas/produtos";
@@ -36,6 +37,7 @@ const OPCIONAIS_ZERADOS_NO_PUT = {
   capacidade: null,
   custo_cents: null,
   imagem_url: null,
+  atributos: {},
 } as const;
 
 function opcoesDeEscrita(requestId: string) {
@@ -68,6 +70,21 @@ async function atualizar(
   // PUT sem `codigo` mantém o atual: ele é autopreenchido no cadastro e é a
   // chave que a automação usa para comparar listas.
   const { supabase, organizationId } = authz;
+  // Atributos: o PUT substitui o objeto; o PATCH mescla as chaves que vieram.
+  let atributos: Record<string, unknown> | undefined;
+  if (parsed.data.atributos !== undefined) {
+    const r = await resolverAtributos(
+      supabase,
+      organizationId,
+      parsed.data.atributos,
+      modo === "put" ? "substituir" : "mesclar",
+      id,
+    );
+    if (!r.ok) {
+      return fail("validation_failed", t("Atributo inválido."), 422, { requestId, details: { atributos: r.erros } });
+    }
+    atributos = r.atributos;
+  }
   // PUT é o estado inteiro: sem `controla_estoque`, vale o mesmo padrão do POST.
   const dados =
     modo === "put"
@@ -79,10 +96,11 @@ async function atualizar(
             controlaEstoquePadrao(await modoDeEstoqueDaOrganizacao(supabase, organizationId)),
         }
       : parsed.data;
+  const comAtributos = atributos === undefined ? dados : { ...dados, atributos };
 
   const { data, error } = await supabase
     .from("catalog_products")
-    .update(dados)
+    .update(comAtributos)
     .eq("organization_id", organizationId)
     .eq("id", id)
     .select(COLUNAS_DO_PRODUTO)
