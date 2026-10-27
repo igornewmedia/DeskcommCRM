@@ -4141,3 +4141,18 @@ não cala a IA, pessoa que saiu da equipe) é medido em
 `tests/invariants/passagem-com-destinatario.test.ts`, e o push direcionado em
 `tests/unit/push-dos-avisos.test.ts`. Não medido: o push chegando num celular
 real, e a passagem disparada por um turno com modelo de verdade.
+
+### Reiniciar memória da IA de um contato (fork, migration 5004)
+
+Inbox › (conversa) › cabeçalho › "Reiniciar memória da IA" (gerente+). Provado
+pela tela em ambiente local (build de produção na porta 3001, banco local com o
+baseline atual), com um contato de teste semeado (mensagem, checkpoint, nota e
+funil em `negotiating`): o botão aparece na barra —
+`evidence/reiniciar-memoria-da-ia/01-botao-no-cabecalho.jpg` —; confirmado, a
+conversa foi para Fechada e o aviso "Memória da IA reiniciada" apareceu —
+`evidence/reiniciar-memoria-da-ia/02-depois-de-reiniciar.jpg`. No banco:
+checkpoints 0, notas 0, funil `new`, a mensagem continua, `ia_memoria_desde`
+preenchido e uma linha `ai.memory_reset` na auditoria. A confirmação do
+navegador (`window.confirm`) foi respondida por script: a ferramenta de prova
+não clica no diálogo nativo; o texto dela foi lido e é o esperado. O "próximo
+turno começa do zero" é medido em `tests/invariants/reiniciar-memoria-da-ia.test.ts`.
