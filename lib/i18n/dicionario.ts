@@ -99,6 +99,11 @@ export const DICIONARIO: Traducoes = {
   "Código JS": { es: "Código JS" },
   // Fork 9004 — capacidade do produto ("Capacidade" já existe mais abaixo).
   "Ex.: 128GB": { es: "Ej.: 128GB" },
+  "Máximo de mensagens por resposta (1–10)": { es: "Máximo de mensajes por respuesta (1–10)" },
+  "Quantas mensagens o agente pode mandar numa mesma resposta. As partes que passarem do limite vão juntas na última mensagem. Vazio usa o padrão da instalação.":
+    {
+      es: "Cuántos mensajes puede enviar el agente en una misma respuesta. Las partes que superen el límite van juntas en el último mensaje. Vacío usa el valor predeterminado de la instalación.",
+    },
   "Nova ferramenta de código": { es: "Nueva herramienta de código" },
   "Erro no código": { es: "Error en el código" },
   // A visão Lista do funil (#3172). O espanhol é `completo`: toda frase de tela
