@@ -324,12 +324,12 @@ describe("mídia do histórico", () => {
     for (const n of ["P1", "P2", "P3"]) canal.midia[idCanal(n)] = { url: `http://canal/files/${n}.jpg`, erro: false };
     const db = bancoDeMentira();
     novaImportacao(db);
-    // 1 (conversas) + 1 (mensagens) + 1 mídia = 3 chamadas
-    const teto = { conversas: 10, mensagens: 300, chamadas: 3 };
+    // 1 (conversas) + 2 (conferência: a página e o fim) + 1 (mensagens) + 1 mídia = 5 chamadas
+    const teto = { conversas: 10, mensagens: 300, chamadas: 5 };
     const r1 = await rodarUmaRodada(db.admin as never, IMP, teto);
     expect(r1.status).toBe("rodando");
     expect(canal.baixadas).toHaveLength(1);
-    expect(db.importacoes.get(IMP)!.cursor).toMatchObject({ indiceConversa: 0, offsetMensagens: 0 });
+    expect(db.importacoes.get(IMP)!.cursor).toMatchObject({ indiceConversa: 0, offsetMensagens: 0, conferida: true });
     expect(db.messages).toHaveLength(3);
     expect(db.importacoes.get(IMP)).toMatchObject({ midias_baixadas: 1 });
 

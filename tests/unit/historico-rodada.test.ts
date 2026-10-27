@@ -32,6 +32,8 @@ const canal = vi.hoisted(() => ({
   aoLerMensagens: null as null | (() => void),
   /** O que o canal resolve de lid para telefone (`/lids/{lid}`). */
   telefoneDoLid: {} as Record<string, string>,
+  /** Falha de transporte em `/lids/{lid}`: lança só quando quem chama pediu `falhaLanca`. */
+  falhaNoLid: null as string | null,
 }));
 vi.mock("@/lib/waha/client", () => ({
   getWahaClient: () => ({
@@ -43,8 +45,12 @@ vi.mock("@/lib/waha/client", () => ({
         .filter((c) => !c.chatId.endsWith("@g.us") && c.chatId !== "status@broadcast");
       return { conversas, lidas: fatia.length };
     },
-    async resolvePhoneForLid(session: string, lid: string) {
+    async resolvePhoneForLid(session: string, lid: string, opts: { falhaLanca?: boolean } = {}) {
       canal.chamadas.push(`lid:${session}:${lid}`);
+      if (canal.falhaNoLid) {
+        if (opts.falhaLanca) throw new Error(canal.falhaNoLid);
+        return null;
+      }
       return canal.telefoneDoLid[lid] ?? null;
     },
     async paginaDeMensagens(session: string, chatId: string, opts: { limit: number; offset: number; desde: number }) {
@@ -72,7 +78,7 @@ const DIA = 86_400;
 type Linha = Record<string, unknown>;
 
 /** Banco em memória com as regras de que o desfecho depende: a unique
- * (organization_id, external_id) e a chave da conversa 1:1. */
+ * (organization_id, external_id), o formato do telefone e a chave da conversa 1:1. */
 function bancoDeMentira() {
   const importacoes = new Map<string, Linha>();
   const messages: Linha[] = [];
@@ -98,6 +104,9 @@ function bancoDeMentira() {
         return Promise.resolve({ data: apagados.has(args.p_telefone as string) || apagados.has(args.p_lid as string), error: null });
       }
       if (fn === "fn_upsert_wa_contact") {
+        if (args.p_phone != null && !/^\+\d{8,15}$/.test(String(args.p_phone))) {
+          return Promise.resolve({ data: null, error: { code: "23514", message: 'new row for relation "contacts" violates check constraint "contacts_phone_e164_format"' } });
+        }
         const chave = `${args.p_kind}:${args.p_kind === "lid" ? args.p_lid : args.p_phone}`;
         if (!contatos.has(chave)) contatos.set(chave, `ct-${contatos.size + 1}`);
         return Promise.resolve({ data: contatos.get(chave), error: null });
@@ -274,6 +283,7 @@ beforeEach(() => {
   canal.maxPorPagina = Number.POSITIVE_INFINITY;
   canal.aoLerMensagens = null;
   canal.telefoneDoLid = {};
+  canal.falhaNoLid = null;
   auditEspiao.mockReset();
   espioes.dispatch.mockReset();
   espioes.posEntrada.mockReset();
@@ -282,6 +292,35 @@ beforeEach(() => {
 });
 
 describe("rodarUmaRodada", () => {
+  it.each(["0@s.whatsapp.net", "0@c.us"])("ignora avisos de %s e importa os chats seguintes (#3519)", async (chat) => {
+    canal.chats.unshift({ id: chat, ultimaEm: agora });
+    canal.mensagens[chat] = [
+      { id: `false_${chat}_AVISO`, from: chat, fromMe: false, body: "Aviso do WhatsApp", timestamp: agora - DIA },
+    ];
+    const db = bancoDeMentira();
+    novaImportacao(db);
+
+    // O primeiro lote só encontra o aviso. A retomada precisa alcançar telefone e LID.
+    const primeira = await rodarUmaRodada(db.admin as never, IMP, { conversas: 1, mensagens: 300 });
+    expect(primeira).toEqual({ status: "rodando", gravadas: 0, existentes: 0 });
+    expect(db.importacoes.get(IMP)).toMatchObject({
+      cursor: { indiceConversa: 1, offsetMensagens: 0 },
+      mensagens_ignoradas: 1,
+      erro: null,
+    });
+    expect(db.rpcs.filter((x) => x.fn === "fn_upsert_wa_contact")).toHaveLength(0);
+
+    expect(await rodarUmaRodada(db.admin as never, IMP, SEM_TETO)).toEqual({ status: "concluida", gravadas: 4, existentes: 0 });
+    expect(db.importacoes.get(IMP)).toMatchObject({ status: "concluida", mensagens_gravadas: 4, mensagens_ignoradas: 3, erro: null });
+    expect(db.messages.map((m) => m.external_id).sort()).toEqual([`false_${TEL}_A1`, "A2", `false_${LID}_B1`, "B2"].sort());
+    const contatos = db.rpcs.filter((x) => x.fn === "fn_upsert_wa_contact").map((x) => x.args);
+    expect(contatos).toContainEqual(expect.objectContaining({ p_kind: "phone", p_phone: "+5511900000001" }));
+    expect(contatos).toContainEqual(expect.objectContaining({ p_kind: "lid", p_lid: "111111111111111", p_phone: "+5511900000002" }));
+    expect(contatos.every((c) => c.p_chat_id !== chat)).toBe(true);
+    expect(espioes.dispatch).not.toHaveBeenCalled();
+    expect(espioes.posEntrada).not.toHaveBeenCalled();
+  });
+
   it("grava contato, conversa e mensagens marcadas como histórico, e conclui", async () => {
     const db = bancoDeMentira();
     novaImportacao(db);
@@ -363,10 +402,11 @@ describe("rodarUmaRodada", () => {
     const db = bancoDeMentira();
     novaImportacao(db);
     const r = await rodarUmaRodada(db.admin as never, IMP, { conversas: 10, mensagens: 1 });
-    expect(r).toMatchObject({ status: "rodando", gravadas: 1 });
-    expect(db.importacoes.get(IMP)!.cursor).toMatchObject({ indiceConversa: 0, offsetMensagens: 1 });
+    // a 1ª página é da conferência: lida, não gravada
+    expect(r).toMatchObject({ status: "rodando", gravadas: 0 });
+    expect(db.importacoes.get(IMP)!.cursor).toMatchObject({ indiceConversa: 0, offsetMensagens: 1, conferida: false });
     let ultima = r;
-    for (let i = 0; i < 20 && ultima.status === "rodando"; i++) {
+    for (let i = 0; i < 40 && ultima.status === "rodando"; i++) {
       ultima = await rodarUmaRodada(db.admin as never, IMP, { conversas: 10, mensagens: 1 });
     }
     expect(ultima.status).toBe("concluida");
@@ -442,7 +482,7 @@ describe("rodarUmaRodada", () => {
     const imp = db.importacoes.get(IMP)!;
     expect(imp.status).toBe("erro");
     expect(imp.erro).toContain("waha_messages_500");
-    expect(imp.cursor).toEqual(cursor);
+    expect(imp.cursor).toEqual({ ...cursor, conferida: false });
     expect(imp.mensagens_gravadas).toBe(2);
   });
 
@@ -517,7 +557,7 @@ describe("rodarUmaRodada", () => {
     expect(db.messages.some((m) => String(m.external_id).includes("B"))).toBe(false);
   });
 
-  it("LGPD: identidade marcada que só aparece numa página posterior para a conversa ali", async () => {
+  it("LGPD: identidade marcada que só aparece na 3ª página: nada da conversa fica no banco", async () => {
     canal.maxPorPagina = 1;
     (canal.mensagens[LID] ??= []).push(
       {
@@ -535,11 +575,50 @@ describe("rodarUmaRodada", () => {
     novaImportacao(db);
     const r = await rodarUmaRodada(db.admin as never, IMP, SEM_TETO);
     expect(r.status).toBe("concluida");
-    const ids = db.messages.map((m) => String(m.external_id));
-    // B1 e B2 vieram antes de a identidade marcada aparecer; da página dela em diante, nada.
-    expect(ids.some((x) => x.includes("B3") || x.includes("B4"))).toBe(false);
-    // e a conversa não é mais lida depois da parada
+    // B1 e B2 vêm antes da página da identidade marcada, e nem elas entram:
+    // a conversa é conferida inteira antes da primeira gravação.
+    expect(db.messages.some((m) => String(m.external_id).includes("B"))).toBe(false);
+    expect(db.rpcs.filter((x) => x.fn === "fn_upsert_wa_contact").map((x) => x.args.p_chat_id)).toEqual([TEL]);
+    expect([...db.conversations.values()]).toHaveLength(1);
+    // a conferência para na 3ª página; a passada de gravação nem começa
     expect(canal.chamadas.filter((c) => c.startsWith(`msgs:nome-no-canal:${LID}:`))).toHaveLength(3);
+    // as 3 lidas da conversa contam como ignoradas (mais a reação e a sem id do TEL)
+    expect(db.importacoes.get(IMP)).toMatchObject({ mensagens_ignoradas: 5 });
+  });
+
+  it("LGPD: a conferência atravessa rodadas: marca na 3ª página, rodadas de 1 mensagem, nada entra", async () => {
+    canal.chats = [{ id: LID, ultimaEm: agora - DIA }];
+    (canal.mensagens[LID] ??= []).push({
+      id: `false_${LID}_B3`,
+      from: LID,
+      fromMe: false,
+      body: "sou eu de novo",
+      timestamp: agora - 3 * DIA,
+      _data: { key: { remoteJidAlt: "5511900000003@s.whatsapp.net" } },
+    });
+    const db = bancoDeMentira();
+    db.apagados.add("+5511900000003");
+    novaImportacao(db);
+    let r = await rodarUmaRodada(db.admin as never, IMP, { conversas: 10, mensagens: 1 });
+    expect(db.importacoes.get(IMP)!.cursor).toMatchObject({ indiceConversa: 0, offsetMensagens: 1, conferida: false });
+    for (let i = 0; i < 10 && r.status === "rodando"; i++) {
+      r = await rodarUmaRodada(db.admin as never, IMP, { conversas: 10, mensagens: 1 });
+    }
+    expect(r.status).toBe("concluida");
+    expect(db.messages).toHaveLength(0);
+    expect(db.rpcs.some((x) => x.fn === "fn_upsert_wa_contact")).toBe(false);
+  });
+
+  it("LGPD: falha de transporte ao resolver o telefone do lid para a rodada sem gravar (falha fechada)", async () => {
+    canal.chats = [{ id: LID, ultimaEm: agora - DIA }];
+    canal.falhaNoLid = "fetch failed";
+    const db = bancoDeMentira();
+    novaImportacao(db);
+    const r = await rodarUmaRodada(db.admin as never, IMP, SEM_TETO);
+    expect(r.status).toBe("erro");
+    expect(String(db.importacoes.get(IMP)?.erro)).toContain("fetch failed");
+    expect(db.messages).toHaveLength(0);
+    expect(db.rpcs.some((x) => x.fn === "fn_upsert_wa_contact")).toBe(false);
   });
 
   it("LGPD: chat @lid sem telefone no acervo é conferido pelo telefone que o canal resolve", async () => {

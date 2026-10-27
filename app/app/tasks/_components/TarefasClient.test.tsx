@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TarefasClient } from "./TarefasClient";
 
@@ -27,6 +27,16 @@ const fetchEspiao = vi.fn(
     }),
 );
 
+beforeAll(() => {
+  // jsdom não implementa captura de ponteiro — mesmo remédio dos outros testes
+  // que abrem um Select do Radix.
+  const proto = window.HTMLElement.prototype as unknown as Record<string, unknown>;
+  proto.hasPointerCapture ??= () => false;
+  proto.setPointerCapture ??= () => undefined;
+  proto.releasePointerCapture ??= () => undefined;
+  proto.scrollIntoView ??= () => undefined;
+});
+
 beforeEach(() => {
   fetchEspiao.mockClear();
   vi.stubGlobal("fetch", fetchEspiao);
@@ -48,20 +58,21 @@ const corposDosPosts = () =>
     .filter(([, init]) => init?.method === "POST")
     .map(([, init]) => JSON.parse(String(init!.body)) as Record<string, unknown>);
 
-describe("TarefasClient — Minhas | Todas", () => {
-  it("⭐ aberta pelo lembrete, a busca leva assigned_to=me", async () => {
+describe("TarefasClient — seletor Responsável", () => {
+  it("⭐ aberta pelo lembrete, a busca leva assigned_to=me e o seletor mostra 'Minhas'", async () => {
     renderTela(true);
 
     await waitFor(() => expect(fetchEspiao).toHaveBeenCalled());
     expect(urls()[0]).toContain("assigned_to=me");
-    expect(screen.getByRole("button", { name: "Minhas" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("combobox", { name: "Responsável" }).textContent).toContain("Minhas");
   });
 
-  it("tocar em 'Todas' faz a próxima busca sair sem o filtro", async () => {
+  it("escolher 'Todos' faz a próxima busca sair sem o filtro", async () => {
     renderTela(true);
     await waitFor(() => expect(fetchEspiao).toHaveBeenCalled());
 
-    await userEvent.click(screen.getByRole("button", { name: "Todas" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Responsável" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Todos" }));
 
     await waitFor(() => expect(urls().at(-1)).not.toContain("assigned_to"));
     expect(urls().at(-1)).toContain("aberto=true");
@@ -90,7 +101,7 @@ describe("TarefasClient — criar a partir de 'Minhas'", () => {
     expect(await criaSemTocarNoResponsavel()).toMatchObject({ assigned_to: "u-eu" });
   });
 
-  it("com 'Todas', a tarefa nova segue nascendo sem responsável", async () => {
+  it("com 'Todos', a tarefa nova segue nascendo sem responsável", async () => {
     renderTela(false);
     expect(await criaSemTocarNoResponsavel()).toMatchObject({ assigned_to: null });
   });

@@ -22,7 +22,8 @@
  *      Número não medido não vira teto: vira lacuna declarada.
  */
 import { randomUUID } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -157,10 +158,10 @@ function varrer(dir: string, achados: string[] = []): string[] {
   return achados;
 }
 
-function caminhosCom(padrao: RegExp): string[] {
-  return DIRS_DE_CODIGO.flatMap((d) => varrer(join(RAIZ, d)))
+function caminhosCom(padrao: RegExp, raiz = RAIZ): string[] {
+  return DIRS_DE_CODIGO.flatMap((d) => varrer(join(raiz, d)))
     .filter((c) => padrao.test(readFileSync(c, "utf8")))
-    .map((c) => c.slice(RAIZ.length + 1).replaceAll("\\", "/"));
+    .map((c) => c.slice(raiz.length + 1).replaceAll("\\", "/"));
 }
 
 /**
@@ -172,6 +173,11 @@ function caminhosCom(padrao: RegExp): string[] {
 const SITES: { arquivo: string; fronteira: string; papel?: "gerador" | "validador" }[] = [
   // Storage — a chave do objeto sai daqui e vira objeto lá.
   { arquivo: "workers/lgpd-export-worker.ts", fronteira: "storage.chave-de-objeto" },
+  // O atestado de anonimização (#2342): a chave é `{org}/{pedido}/atestado.pdf`
+  // — o primeiro pedaço é o UUID da org que o banco gera, o segundo é o id do
+  // pedido já validado como uuid pela rota, e o sufixo é fixo. Nada de texto
+  // digitado por ninguém entra na chave.
+  { arquivo: "lib/lgpd/emitir-atestado.ts", fronteira: "storage.chave-de-objeto" },
   { arquivo: "workers/media-persist-worker.ts", fronteira: "storage.chave-de-objeto" },
   { arquivo: "lib/ai/skills/install.ts", fronteira: "storage.chave-de-objeto" },
   // Herança de arquivos do pacote no save textual (#2047): a chave é montada
@@ -328,6 +334,25 @@ describe("nenhum identificador sem destino declarado", () => {
 });
 
 describe("a varredura é de classe: site novo de fronteira reprova", () => {
+  it.each(["app/api/novo/route.ts", "scripts/operacao.ts", "scripts/provas/nova.ts"])(
+    "encontra upload novo em %s; bancada em tests fica fora do código de produção",
+    (arquivo) => {
+      const raiz = mkdtempSync(join(tmpdir(), "fronteiras-de-producao-"));
+      try {
+        for (const dir of [...DIRS_DE_CODIGO, "tests/provas"]) mkdirSync(join(raiz, dir), { recursive: true });
+        mkdirSync(join(raiz, arquivo, ".."), { recursive: true });
+        writeFileSync(join(raiz, arquivo), "armazenamento.upload('chave', bytes);\n");
+        writeFileSync(join(raiz, "tests/provas/bancada.ts"), "armazenamento.upload('fixture', bytes);\n");
+        // Nem retirar scripts da varredura, nem ignorar scripts/provas passa.
+        // O site novo permanece fora do catálogo e seria recusado pelo gate.
+        expect(caminhosCom(/\.upload\(/, raiz)).toEqual([arquivo]);
+        expect(SITES.some((s) => s.arquivo === arquivo)).toBe(false);
+      } finally {
+        rmSync(raiz, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("todo `.upload(` do código de produção está registrado, e na fronteira certa", () => {
     const achados = caminhosCom(/\.upload\(/);
     const registrados = SITES.filter((s) => s.fronteira === "storage.chave-de-objeto").map((s) => s.arquivo);

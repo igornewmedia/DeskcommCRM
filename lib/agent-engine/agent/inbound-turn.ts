@@ -113,6 +113,7 @@ import {
   type LeadCheckpointRow,
 } from "./abertura/checkpoint";
 import { buildOpeningMessage, ritualBlocks } from "./abertura/ritual";
+import { lerRemetenteDeGrupo, type RemetenteDeGrupo } from "@/lib/messaging/remetente-de-grupo";
 import { applySaveLeadNote, buildNotesIndexBlock, getLeadNoteBody } from './lead-notes';
 import { buildCompromissosBlock } from './compromissos-do-contato';
 import { buildOrigemBlock } from './abertura/origem-do-contato';
@@ -168,6 +169,7 @@ import { validarRespostaDoFluxo } from './flow-validate';
 import { moduloLigadoComMemo } from '@/lib/instalacao/modulos';
 import { msAteAJanelaAbrir } from './janela-de-atendimento';
 import { turnoDisparaNasMensagens } from './palavra-chave-do-gatilho';
+import { agenteJaRespondeuNoAtendimento } from './agente-ja-respondeu';
 import { enviaAvisoForaDoHorario, portasDeProducao } from './aviso-fora-do-horario';
 import { enviarComSaidaConfiguravel } from "@/lib/prospecting/saida-configuravel";
 import { janelaDeEnvioAberta, proximaAberturaDaJanela } from '../pacing/engine';
@@ -207,6 +209,7 @@ import { capabilitiesOf } from '@/lib/channels/capabilities';
 import { renderTemplateBody } from '@/lib/channels/meta/render-template';
 import { esperarComoHumano, manterDigitando } from './atraso-humano';
 import { instrucaoDeBolhas, sendInBubbles, splitForSend } from './split-message';
+import { semConteudoVisivel } from './conteudo-visivel';
 import { formatarParaWhatsApp } from './formato-whatsapp';
 import type { DisclosureMode } from '../guardrails/disclosure/template';
 import { decidePromise } from '../guardrails/promise/engine';
@@ -348,7 +351,7 @@ export const AGENT_TOOL_DEFS = {
     description:
       'Envia UMA mensagem de WhatsApp ao lead desta conversa. É o ÚNICO jeito de falar com o lead; texto fora desta tool nunca é enviado.',
     inputSchema: z.object({
-      body: z.string().min(1).describe('corpo da mensagem, em pt-br, pronto para envio'),
+      body: z.string().min(1).describe('corpo da mensagem, no idioma da conversa com o lead, pronto para envio'),
       produto_codigo: z
         .string()
         .optional()
@@ -447,7 +450,7 @@ export const AGENT_TOOL_DEFS = {
       'invente o que não encontrar. Sem resultados = diga que vai confirmar, nunca chute.',
     inputSchema: z
       .object({
-        query: z.string().min(2).describe('a pergunta ou termos a buscar, em pt-br'),
+        query: z.string().min(2).describe('a pergunta ou termos a buscar, no idioma da conversa com o lead'),
       })
       .passthrough(),
   },
@@ -535,9 +538,9 @@ export const AGENT_TOOL_DEFS = {
     // erro de ENSINO ao modelo, nunca exceção do SDK nem strip silencioso.
     inputSchema: z
       .object({
-        title: z.string().describe('título curto, ex.: "Liberar acesso ao painel"'),
-        summary: z.string().describe('o que o lead precisa, em pt-br'),
-        blocker: z.string().describe('por que você não consegue resolver sozinho'),
+        title: z.string().describe('título curto, no idioma da conversa com o lead (ex.: "Liberar acesso ao painel")'),
+        summary: z.string().describe('o que o lead precisa, no idioma da conversa com o lead'),
+        blocker: z.string().describe('por que você não consegue resolver sozinho, no mesmo idioma'),
         // O assunto serve para quem TRIA a fila separar antes de ler. O detalhe
         // continua no título e no resumo — este campo não os substitui, e por
         // isso a lista é curta: muitas opções produzem classificação
@@ -679,8 +682,26 @@ export async function loadInboundBodyForJob(
   db: Queryable,
   input: { tenantId: string; conversationId: string; inboundMessageId: string },
 ): Promise<string | null> {
-  const result = await db.query<CorpoDaMensagemRow>(
-    `select type, body, media_url, media_storage_path, media_derived_text
+  const linha = await loadInboundForJob(db, input);
+  return linha === null ? null : linha.body;
+}
+
+/**
+ * A linha canônica do job — corpo E autor (#2729).
+ *
+ * O corpo sai do mesmo caminho de sempre (`corpoDaMensagem`); o `sender` é o
+ * `metadata.group_sender` que o ingest de grupo grava. Numa conversa 1:1 ele é
+ * `null`: não há participante a nomear, e o autor é o próprio contato da ficha.
+ *
+ * Uma consulta só, e não duas: este é o caminho quente de abertura do turno — o
+ * `metadata` vem na mesma linha que o corpo já lia.
+ */
+export async function loadInboundForJob(
+  db: Queryable,
+  input: { tenantId: string; conversationId: string; inboundMessageId: string },
+): Promise<{ body: string; sender: RemetenteDeGrupo | null } | null> {
+  const result = await db.query<CorpoDaMensagemRow & { metadata: unknown }>(
+    `select type, body, media_url, media_storage_path, media_derived_text, metadata
        from messages
       where organization_id = $1
         and conversation_id = $2
@@ -690,7 +711,8 @@ export async function loadInboundBodyForJob(
     [input.tenantId, input.conversationId, input.inboundMessageId],
   );
   const row = result.rows[0];
-  return row === undefined ? null : corpoDaMensagem(row);
+  if (row === undefined) return null;
+  return { body: corpoDaMensagem(row), sender: lerRemetenteDeGrupo(row.metadata) };
 }
 
 /**
@@ -1573,6 +1595,12 @@ export interface AgentTurnInput {
     origemBlock?: string;
     /** Texto exato da mensagem que acordou este turno inbound. */
     currentInboundText?: string;
+    /**
+     * #2729 — quem escreveu a mensagem que acordou este turno, quando ela veio
+     * de um GRUPO. Opcional pela mesma razão de `projeta`: quem monta um ritual
+     * à mão (testes) não precisa dele, e a produção sempre o passa.
+     */
+    currentInboundSender?: RemetenteDeGrupo;
     /**
      * Projetar o contexto (spec 16 §4)? Decidido pelo turno, ver `turnoProjeta`.
      *
@@ -2667,7 +2695,7 @@ async function executarTurnoDoAgente(
   // juntos, o pico chega a 32 leituras sobre 10 conexões (default do pg, knob
   // DB_POOL_MAX). O pg enfileira e nenhuma destas leituras segura conexão, então
   // o pior caso é espera de fila no pico, não erro nem deadlock.
-  const [playbook, [skills, currentInboundText], orgMemory, [previous, leadState]] =
+  const [playbook, [skills, inboundDoJob], orgMemory, [previous, leadState]] =
     await Promise.all([
       (async () => {
         const prospectingContext =
@@ -2689,7 +2717,7 @@ async function executarTurnoDoAgente(
           await loadSkills(pool, tenantId),
           input.inboundMessageId === undefined
             ? null
-            : await loadInboundBodyForJob(pool, {
+            : await loadInboundForJob(pool, {
                 tenantId,
                 conversationId: input.conversationId,
                 inboundMessageId: input.inboundMessageId,
@@ -2705,6 +2733,10 @@ async function executarTurnoDoAgente(
           preview?.kind === 'sandbox' ? null : await getLeadState(pool, tenantId, leadId),
         ] as const)(),
     ]);
+  // A mensagem canônica do job: o TEXTO que este turno responde e, num grupo,
+  // QUEM a escreveu (#2729). As duas saem da mesma linha, numa leitura só.
+  const currentInboundText = inboundDoJob === null ? null : inboundDoJob.body;
+  const currentInboundSender = inboundDoJob === null ? null : inboundDoJob.sender;
   const skillIndex = renderSkillIndex(skills);
   const systemWithMemory = composeSystemPrompt({
     playbookPrompt: playbook.prompt,
@@ -2961,6 +2993,43 @@ async function executarTurnoDoAgente(
   // `corpoTemTexto` que faz a falha aberta da mídia rodar de verdade
   // (ponto 2).
   //
+  // O FILTRO DECIDE A ENTRADA, NÃO CADA MENSAGEM (#3142). O exemplo medido no
+  // #2696: o agente responde a "quero um orçamento", pergunta o produto, e o
+  // cliente responde "camiseta azul, tamanho M" — sem a palavra do filtro. Com
+  // o gate julgando cada mensagem, `turnoDisparaNasMensagens` devolvia false e o
+  // agente ficava CALADO no meio da conversa que ele mesmo começou. A tela
+  // promete "só entra quando a mensagem contiver uma dessas palavras": isso
+  // fala da ENTRADA do agente na conversa, não de cada turno seguinte.
+  //
+  // A âncora do "já engajado" é uma OUTBOUND DESTE AGENTE NESTE ATENDIMENTO
+  // (`agente-ja-respondeu.ts`): `messages` com `sent_via='ai'`,
+  // `metadata->>'ai_actor_id' = agentConfig.agentId` e dentro da fronteira do
+  // atendimento corrente — a MESMA linha que o caminho de envio grava DEPOIS
+  // deste portão, portanto a única testemunha que não existe antes de o agente
+  // responder. O sticky do roteador NÃO serve (CR do #3240): sem roteador ele
+  // nunca é gravado, e com roteador é gravado no INÍCIO do turno, antes deste
+  // portão — ali o filtro seguraria só a primeira mensagem, não a entrada. E a
+  // âncora é do agente que VAI responder, não da conversa: fala do suporte não
+  // engaja o agente de vendas que o roteador acabou de escolher (ponto 2).
+  //
+  // A leitura só acontece quando há filtro configurado — quem não usa o campo
+  // não paga a consulta. Erro de leitura sobe e o turno é re-tentado pela fila
+  // (`failJob` → `max_attempts` → `job_dead`): `false` ali calaria um cliente
+  // já engajado. Só a linha ausente vira `false`; nunca inventa engajamento.
+  const agenteJaEngajado =
+    !preview && liveJob().kind === 'inbound_turn' && agentConfig?.filtroDePalavraChave != null
+      ? await agenteJaRespondeuNoAtendimento(pool, {
+          organizationId: tenantId,
+          conversationId: input.conversationId,
+          agentId: agentConfig.agentId,
+        })
+      : false;
+  //
+  // O QUE NÃO MUDA: a janela logo abaixo segue valendo para o turno engajado
+  // (ela é sobre QUANDO o lojista atende, não sobre palavras), a ordem do início
+  // do turno fica intacta (detecções determinísticas → filtro → janela) e a
+  // falha aberta continua aberta. O miss na ENTRADA segue calando o turno.
+  //
   // Diferente da JANELA logo abaixo, um miss NÃO adia: não há "depois" em que
   // a mesma mensagem venha a casar. O turno é encerrado sem resposta (`return`,
   // o mesmo consumo do job de todo outro veto do início do turno — lead em
@@ -2969,7 +3038,12 @@ async function executarTurnoDoAgente(
   // tela. Regex quebrada, corpo sem texto ou nada a julgar ⇒ o turno SEGUE —
   // entrar de menos cala o cliente, e esta porta é a única que este gate
   // existe para não criar.
-  if (!preview && liveJob().kind === 'inbound_turn' && agentConfig?.filtroDePalavraChave != null) {
+  if (
+    !preview &&
+    liveJob().kind === 'inbound_turn' &&
+    agentConfig?.filtroDePalavraChave != null &&
+    !agenteJaEngajado
+  ) {
     const corposDoTurno =
       inboundsPendentes.length > 0
         ? inboundsPendentes
@@ -3726,8 +3800,9 @@ async function executarTurnoDoAgente(
         // WhatsApp do cliente recebeu bolhas em branco. O schema garante
         // min(1) no argumento, mas um `\n`/espaço passa e vira vazio depois do
         // trim/gates. Recusar aqui devolve ao modelo para reescrever — nunca
-        // manda bolha em branco.
-        if (body.trim() === '') {
+        // manda bolha em branco. "Em branco" inclui o que o `trim()` não tira:
+        // caractere de formatação invisível (U+200E e afins), spec 28.
+        if (semConteudoVisivel(body)) {
           return {
             ok: false,
             error: {
@@ -5173,6 +5248,9 @@ async function executarTurnoDoAgente(
       compromissosBlock,
       origemBlock,
       ...(currentInboundText !== null ? { currentInboundText } : {}),
+      // #2729 — o autor da mensagem canônica, quando ela é de grupo. Vai junto
+      // do texto: sem ele o modelo ouve a voz e não sabe de quem é.
+      ...(currentInboundSender !== null ? { currentInboundSender } : {}),
     });
     // Sufixos por-lead (situacionais, voláteis — depois do prefixo cacheável F2-17): corpos de
     // skill casadas (F3-09) + hint do classificador (F3-11) + instrução de split (F4-xx, quando
@@ -6301,6 +6379,7 @@ export function createInboundTurnHandler(deps: InboundTurnDeps) {
         compromissosBlock,
         origemBlock,
         currentInboundText,
+        currentInboundSender,
       }) =>
         buildOpeningMessage(
           previous,
@@ -6311,6 +6390,7 @@ export function createInboundTurnHandler(deps: InboundTurnDeps) {
           entregues,
           compromissosBlock,
           currentInboundText,
+          currentInboundSender,
           origemBlock,
         ),
     });
