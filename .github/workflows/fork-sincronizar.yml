@@ -1,6 +1,6 @@
 name: Fork — sincronizar com o original
 
-# Toda segunda-feira confere se o projeto original (melgarafael/DeskcommCRM)
+# Todo dia útil confere se o projeto original (melgarafael/DeskcommCRM)
 # lançou versão nova. Se lançou: abre uma Issue (a sua tarefa) com as
 # novidades e os pontos de atenção e, quando a junção com o seu código é
 # limpa, um PR pronto para aprovar. Nunca mexe na main sozinho.
@@ -10,9 +10,12 @@ name: Fork — sincronizar com o original
 
 on:
   schedule:
-    # Segunda, 08:17 de Brasília (11:17 UTC). Minuto quebrado de propósito:
+    # Segunda a sexta, 08:17 de Brasília (11:17 UTC). Era só às segundas até
+    # 27/10/2026: o original lança versão quase todo dia, e juntar uma semana
+    # inteira de versões numa tarefa só aumentava o conflito. Fim de semana fica
+    # de fora: o que sair no sábado chega na segunda. Minuto quebrado de propósito:
     # o topo da hora é o horário mais congestionado do agendador do GitHub.
-    - cron: "17 11 * * 1"
+    - cron: "17 11 * * 1-5"
   workflow_dispatch: {}
 
 concurrency:
