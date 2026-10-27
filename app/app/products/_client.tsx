@@ -13,7 +13,10 @@ import { MAXIMO_DE_FOTOS } from "@/lib/catalogo/fotos";
 import { formatCents } from "@/lib/money";
 import { precoParaCentavos, type Produto } from "@/lib/schemas/produtos";
 
+import type { ModoDeEstoque } from "@/lib/catalogo/modo-de-estoque";
+
 import { EdicaoDoProduto } from "./_edicao";
+import { ModoDeEstoqueDaEmpresa } from "./_modoDeEstoque";
 
 interface Textos {
   titulo: string;
@@ -228,6 +231,7 @@ export function ProdutosClient({
   buscaInicial,
   urlsDasFotos,
   podeEditar,
+  modoEstoque = "somente_com_estoque",
   textos,
 }: {
   /** A página atual, já filtrada no servidor (ver `lib/catalogo/busca-da-tela.ts`). */
@@ -239,6 +243,7 @@ export function ProdutosClient({
   buscaInicial: string;
   urlsDasFotos: Record<string, string>;
   podeEditar: boolean;
+  modoEstoque?: ModoDeEstoque;
   textos: Textos;
 }) {
   const t = useT();
@@ -258,7 +263,10 @@ export function ProdutosClient({
     if (busca.trim() !== buscaInicial) setBusca(buscaInicial);
   }
   const [criando, setCriando] = React.useState(false);
-  const [rascunho, setRascunho] = React.useState<Rascunho>(VAZIO);
+  // Produto novo nasce no padrão da empresa, o mesmo que o POST aplicaria.
+  const semControle = modoEstoque === "sem_controle";
+  const novoRascunho = React.useMemo<Rascunho>(() => ({ ...VAZIO, controla_estoque: !semControle }), [semControle]);
+  const [rascunho, setRascunho] = React.useState<Rascunho>(novoRascunho);
   const [salvando, setSalvando] = React.useState(false);
   const [importando, setImportando] = React.useState(false);
   const [resumo, setResumo] = React.useState<ResumoDaImportacao | null>(null);
@@ -296,7 +304,7 @@ export function ProdutosClient({
     try {
       await apiClient.post("/api/v1/products", corpo);
       toast.success(t("Produto cadastrado"));
-      setRascunho(VAZIO);
+      setRascunho(novoRascunho);
       setCriando(false);
       router.refresh();
     } catch (e) {
@@ -352,6 +360,8 @@ export function ProdutosClient({
           {t("Aparelhos aceitos na troca")}
         </a>
       </header>
+
+      <ModoDeEstoqueDaEmpresa modo={modoEstoque} podeMudar={podeEditar} />
 
       <div className="mb-4 flex items-center gap-3">
         <input
@@ -596,9 +606,12 @@ export function ProdutosClient({
                   {p.marca ? ` · ${p.marca}` : ""}
                   {p.cor ? ` · ${p.cor}` : ""}
                   {p.capacidade ? ` · ${p.capacidade}` : ""}
-                  {p.controla_estoque
-                    ? ` · ${p.quantidade} ${t("em estoque")}`
-                    : ` · ${t("sem controle de estoque")}`}
+                  {/* Sem controle de estoque na empresa, a quantidade não significa nada: some da lista. */}
+                  {semControle
+                    ? ""
+                    : p.controla_estoque
+                      ? ` · ${p.quantidade} ${t("em estoque")}`
+                      : ` · ${t("sem controle de estoque")}`}
                 </p>
               </div>
               <span className="shrink-0 tabular-nums font-medium">

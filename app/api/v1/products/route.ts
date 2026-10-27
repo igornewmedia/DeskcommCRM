@@ -13,6 +13,11 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * /admin/endpoints. A organização vem da linha do token, nunca do corpo; ler
  * pede `mcp:read`, cadastrar pede `mcp:write`. Sem `codigo`, o banco gera o
  * próximo `PRD-NNNNN`.
+ *
+ * Cada produto do GET leva `disponivel`, calculado pelo modo de estoque da
+ * empresa (`lib/catalogo/modo-de-estoque.ts`). POST sem `controla_estoque`
+ * herda o modo: `false` em "sem controle de estoque", `true` em "somente com
+ * estoque".
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -28,7 +33,8 @@ import {
   PRODUTOS_POR_PAGINA,
 } from "@/lib/catalogo/busca-da-tela";
 import { moedaDaOrganizacao } from "@/lib/catalogo/moeda-da-org";
-import { COLUNAS_DO_PRODUTO, produtoCreateSchema } from "@/lib/schemas/produtos";
+import { controlaEstoquePadrao, modoDeEstoqueDaOrganizacao, produtoDisponivel } from "@/lib/catalogo/modo-de-estoque";
+import { COLUNAS_DO_PRODUTO, produtoCreateSchema, type Produto } from "@/lib/schemas/produtos";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +70,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
 
   const { supabase, organizationId } = authz;
+  const modo = await modoDeEstoqueDaOrganizacao(supabase, organizationId);
 
   let q = supabase
     .from("catalog_products")
@@ -92,9 +99,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     });
   }
   if (error) return fail("internal_error", "Erro ao listar os produtos.", 500, { requestId });
-  if (!paginado) return ok(data ?? [], { requestId });
+  const produtos = ((data ?? []) as unknown as Produto[]).map((p) => ({ ...p, disponivel: produtoDisponivel(p, modo) }));
+  if (!paginado) return ok(produtos, { requestId });
   const total = count ?? null;
-  return ok(data ?? [], {
+  return ok(produtos, {
     requestId,
     meta: {
       total,
@@ -133,9 +141,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { supabase, organizationId } = authz;
   // A moeda vem da organização, nunca do corpo — ver `moedaDaOrganizacao()`.
   const moeda = await moedaDaOrganizacao(supabase, organizationId);
+  const controla_estoque =
+    parsed.data.controla_estoque ?? controlaEstoquePadrao(await modoDeEstoqueDaOrganizacao(supabase, organizationId));
   const { data, error } = await supabase
     .from("catalog_products")
-    .insert({ ...parsed.data, moeda, organization_id: organizationId, origem: "manual" })
+    .insert({ ...parsed.data, controla_estoque, moeda, organization_id: organizationId, origem: "manual" })
     .select(COLUNAS_DO_PRODUTO)
     .single();
 

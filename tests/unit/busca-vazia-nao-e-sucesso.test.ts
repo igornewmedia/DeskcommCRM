@@ -26,6 +26,7 @@ function produto(over: Record<string, unknown> = {}) {
     moeda: "BRL",
     controla_estoque: true,
     quantidade: 3,
+    ativo: true,
     ...over,
   };
 }

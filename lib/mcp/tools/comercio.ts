@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import type { McpToolDefinition } from "../types";
 import { buscarComRelaxamento } from "@/lib/catalogo/busca";
+import { modoDeEstoqueDaOrganizacao, produtoDisponivel } from "@/lib/catalogo/modo-de-estoque";
 import { formatCents } from "@/lib/money";
 
 // ---------------------------------------------------------------------------
@@ -197,7 +198,9 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
     "tem — diga que vai confirmar com a equipe. Em qualquer caso, não invente preço e nunca " +
     "invente um valor que você lembra. " +
     "Produto com `fotos` tem foto cadastrada: ao apresentá-lo, passe o `codigo` dele em " +
-    "`produto_codigo` no send_message, e a foto vai junto com o texto.",
+    "`produto_codigo` no send_message, e a foto vai junto com o texto. " +
+    "Disponibilidade é só o campo `disponivel`: nunca diga ao cliente quantas unidades há em " +
+    "estoque nem crie escassez ('últimas unidades').",
   inputSchema: produtosInputShape,
   category: "read",
   requiresRole: "agent",
@@ -295,17 +298,18 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       moeda: string;
       controla_estoque: boolean;
       quantidade: number;
+      ativo: boolean;
       fotos: string[] | null;
     };
 
     const { achados, ignorados } = buscarComRelaxamento((data ?? []) as Linha[], input.termo);
 
-    // `controla_estoque` é o conserto de uma armadilha da versão anterior, que
-    // filtrava por quantidade sempre: numa loja que não conta estoque (decant de
-    // perfume, item sob encomenda) o catálogo INTEIRO ficava invisível.
-    const disponiveis = input.somente_disponiveis
-      ? achados.filter((a) => !a.produto.controla_estoque || a.produto.quantidade > 0)
-      : achados;
+    // A régua é a da empresa (`lib/catalogo/modo-de-estoque.ts`), lida a cada
+    // busca: sem controle de estoque, todo ativo está disponível e a quantidade
+    // 0 do fornecedor não esconde o catálogo inteiro.
+    const modo = await modoDeEstoqueDaOrganizacao(ctx.supabase, ctx.organizationId);
+    const disponivel = (p: Linha) => produtoDisponivel(p, modo);
+    const disponiveis = input.somente_disponiveis ? achados.filter((a) => disponivel(a.produto)) : achados;
 
     const topo = disponiveis.slice(0, input.limite);
 
@@ -365,7 +369,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
         ...(produto.categoria ? { categoria: produto.categoria } : {}),
         ...(produto.cor ? { cor: produto.cor } : {}),
         ...(produto.capacidade ? { capacidade: produto.capacidade } : {}),
-        disponivel: !produto.controla_estoque || produto.quantidade > 0,
+        disponivel: disponivel(produto),
         // Quantas fotos, e não quais: o caminho é vocabulário interno e a URL
         // assinada expira. Quem manda a foto é o `send_message` do agente, com
         // `produto_codigo` — ele acha as fotos pelo código (migration 0390).

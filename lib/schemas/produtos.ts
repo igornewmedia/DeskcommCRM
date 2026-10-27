@@ -120,7 +120,9 @@ export const produtoCreateSchema = z.object({
   // do `produtoPatchSchema` (que é este `.partial()`), e isso é o certo: a
   // linha guarda a moeda com que nasceu.
   custo_cents: z.number().int().min(0).nullable().optional(),
-  controla_estoque: z.boolean().default(true),
+  // Sem default aqui: quem não diz herda o modo de estoque da empresa
+  // (`controlaEstoquePadrao`, aplicado na rota do POST e do PUT).
+  controla_estoque: z.boolean().optional(),
   quantidade: z.number().int().min(0).default(0),
   ativo: z.boolean().default(true),
   imagem_url: z.string().trim().url().max(2000).optional(),

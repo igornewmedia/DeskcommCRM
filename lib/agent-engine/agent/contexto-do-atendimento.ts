@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { Queryable } from '../queue/queue';
 import { resolveActiveLeadForContact, type LeadCandidate } from '@/lib/leads/active-lead';
+import { modoDeEstoqueDoValor, produtoDisponivel } from '@/lib/catalogo/modo-de-estoque';
 import { formatCents } from '@/lib/money';
 import { fusoValido, FUSO_PADRAO } from '@/lib/tempo/fusos';
 
@@ -105,7 +106,8 @@ export function normalizarFontesDoAtendimento(f: FontesDoAtendimento, tenantId: 
       revisao: createHash('sha256').update(JSON.stringify(s)).digest('hex') })),
     produtos: (f.produtos ?? []).map(p => ({ codigo: string(p.codigo), nome: string(p.nome), descricao: string(p.descricao),
       preco: formatCents(Number(p.preco_cents), string(p.moeda) || 'BRL'),
-      disponivel: p.ativo === true && (!p.controla_estoque || Number(p.quantidade) > 0) })),
+      disponivel: produtoDisponivel({ ativo: p.ativo === true, controla_estoque: p.controla_estoque !== false, quantidade: Number(p.quantidade) },
+        modoDeEstoqueDoValor(policy.modo_estoque)) })),
   };
   const mensagem = object(f.job?.canonical_message);
   const texto = string(mensagem.text);
@@ -243,7 +245,7 @@ export async function carregarContextoDoAtendimento(db: Queryable, ids: { tenant
     (select coalesce(jsonb_agg(x),'[]') from (
       select 'documento' as id,p.organization_id,v.content as body,v.created_at from org_memory_pointers p join org_memory_versions v on v.id=p.version_id and v.organization_id=p.organization_id where p.organization_id=$1
       union all select e.id::text,e.organization_id,e.title || E'\n' || e.body,e.created_at from org_memory_entries e where e.organization_id=$1 and e.status='active' order by created_at desc limit 9) x) as auxiliares,
-    (select jsonb_build_object('jev',settings->'jev','timezone',timezone,
+    (select jsonb_build_object('jev',settings->'jev','timezone',timezone,'modo_estoque',settings->'catalogo'->'modo_estoque',
       'promise_table',(select version_id from promise_table_pointers where organization_id=$1),
       'bindings',(select jsonb_agg(jsonb_build_object('purpose',purpose,'provider',provider,'model',model_id,'credential',credential_id,'enabled',is_enabled,'base',base_url) order by purpose) from ai_purpose_bindings where organization_id=$1 and purpose in ('promise_semantic','human_return_confirmation')),
       'sources',(select jsonb_agg(jsonb_build_object('id',id,'active',is_active,'version',active_kb_version_id,'content_hash',content_hash) order by id) from ai_knowledge_sources where organization_id=$1 and id=any($5::uuid[])),
