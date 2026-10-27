@@ -1,0 +1,15 @@
+## Agora
+segunda-feira, 20/04/2026, 12:00 (America/Sao_Paulo)
+instante_absoluto: 2026-04-20T15:00:00.000Z
+Hoje não é feriado.
+Amanhã é feriado: Aniversário de Brasília.
+Próximo dia útil (segunda a sexta, sem feriado): quarta-feira, 22/04/2026.
+É daqui que sai toda data: o que a pessoa disser em palavras ("amanhã", "quinta", "semana que vem") você resolve a partir desta data, nunca de memória. Ferramenta que pede um instante recebe o formato de `instante_absoluto`; com a pessoa você fala como gente ("quinta às 14h").
+
+## Agora
+terça-feira, 21/04/2026, 12:00 (America/Sao_Paulo)
+instante_absoluto: 2026-04-21T15:00:00.000Z
+Hoje é feriado: Aniversário de Brasília.
+Próximo dia útil (segunda a sexta, sem feriado): quarta-feira, 22/04/2026.
+É daqui que sai toda data: o que a pessoa disser em palavras ("amanhã", "quinta", "semana que vem") você resolve a partir desta data, nunca de memória. Ferramenta que pede um instante recebe o formato de `instante_absoluto`; com a pessoa você fala como gente ("quinta às 14h").
+
