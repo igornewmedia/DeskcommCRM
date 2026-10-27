@@ -25,6 +25,7 @@ import {
   useUnmarkPersonalContact,
 } from "@/hooks/contacts/usePersonalContact";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { ReiniciarMemoriaDaIa } from "@/components/inbox/ReiniciarMemoriaDaIa";
 import {
   useArchiveConversation,
   useCloseConversation,
@@ -397,6 +398,8 @@ export function ConversationHeader({
           podeConvidar={podeConvidar}
           atendenteId={user.id}
         />
+        {/* Reiniciar memória da IA (migration 5004): gerente+, como a rota. */}
+        {!conversation.is_group && podeMarcarPessoal && <ReiniciarMemoriaDaIa conversationId={conversation.id} />}
         {isOpen && (
           <Button
             size="sm"

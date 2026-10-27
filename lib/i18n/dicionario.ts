@@ -99,6 +99,20 @@ export const DICIONARIO: Traducoes = {
   "Código JS": { es: "Código JS" },
   // Fork 9004 — capacidade do produto ("Capacidade" já existe mais abaixo).
   "Ex.: 128GB": { es: "Ej.: 128GB" },
+  // Fork 5004 — reiniciar memória da IA.
+  "Para testar o agente do zero: a IA esquece o que sabia deste contato. As mensagens ficam.":
+    {
+      es: "Para probar el agente desde cero: la IA olvida lo que sabía de este contacto. Los mensajes se quedan.",
+    },
+  "Reiniciar memória da IA": { es: "Reiniciar memoria de la IA" },
+  "Reiniciar a memória da IA deste contato? O atendimento atual é fechado e a IA esquece o resumo, as notas e a etapa do funil dele. As mensagens continuam na conversa, mas não entram mais no contexto da IA.":
+    {
+      es: "¿Reiniciar la memoria de la IA de este contacto? La atención actual se cierra y la IA olvida el resumen, las notas y la etapa del embudo. Los mensajes siguen en la conversación, pero ya no entran en el contexto de la IA.",
+    },
+  "Memória da IA reiniciada. A próxima mensagem do cliente começa do zero.":
+    {
+      es: "Memoria de la IA reiniciada. El próximo mensaje del cliente empieza desde cero.",
+    },
   // Fork 5003 — quem recebe as passagens.
   "Quem recebe as passagens": { es: "Quién recibe los traspasos" },
   "Ninguém em especial (fica na fila da equipe)": { es: "Nadie en especial (queda en la cola del equipo)" },

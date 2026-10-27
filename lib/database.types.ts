@@ -5773,6 +5773,7 @@ export type Database = {
           first_service_at: string | null;
           force_human: boolean;
           id: string;
+          ia_memoria_desde: string | null;
           is_anonymized: boolean;
           is_blocked: boolean;
           is_merged_into: string | null;
@@ -5826,6 +5827,7 @@ export type Database = {
           first_service_at?: string | null;
           force_human?: boolean;
           id?: string;
+          ia_memoria_desde?: string | null;
           is_anonymized?: boolean;
           is_blocked?: boolean;
           is_merged_into?: string | null;
@@ -5878,6 +5880,7 @@ export type Database = {
           first_service_at?: string | null;
           force_human?: boolean;
           id?: string;
+          ia_memoria_desde?: string | null;
           is_anonymized?: boolean;
           is_blocked?: boolean;
           is_merged_into?: string | null;
@@ -15757,6 +15760,10 @@ export type Database = {
       fn_service_lock: { Args: { p_contact: string; p_org: string }; Returns: undefined };
       fn_service_observe: { Args: { p_contact: string; p_org: string }; Returns: Json };
       fn_service_observe_command: { Args: { p_contact: string; p_org: string }; Returns: Json };
+      fn_reiniciar_memoria_da_ia: {
+        Args: { p_contact: string; p_org: string };
+        Returns: Json;
+      };
       fn_service_status: {
         Args: { p_conversation: string; p_expected?: number; p_org: string; p_status: string };
         Returns: {
