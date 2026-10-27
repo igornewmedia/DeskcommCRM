@@ -36,6 +36,7 @@ export interface AgentVersionRow {
   split_max_chars: number;
   inbound_debounce_ms: number | null;
   max_sends_per_turn: number | null;
+  handoff_target_user_id: string | null;
   followup: {
     enabled: boolean;
     flow_pointer_ids: string[];

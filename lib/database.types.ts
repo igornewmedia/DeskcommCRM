@@ -971,6 +971,7 @@ export type Database = {
           id: string;
           inbound_debounce_ms: number | null;
           max_sends_per_turn: number | null;
+          handoff_target_user_id: string | null;
           knowledge_source_ids: string[];
           max_steps: number;
           model: string;
@@ -1013,6 +1014,7 @@ export type Database = {
           id?: string;
           inbound_debounce_ms?: number | null;
           max_sends_per_turn?: number | null;
+          handoff_target_user_id?: string | null;
           knowledge_source_ids?: string[];
           max_steps?: number;
           model: string;
@@ -1054,6 +1056,7 @@ export type Database = {
           id?: string;
           inbound_debounce_ms?: number | null;
           max_sends_per_turn?: number | null;
+          handoff_target_user_id?: string | null;
           knowledge_source_ids?: string[];
           max_steps?: number;
           model?: string;

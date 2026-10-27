@@ -227,6 +227,7 @@ Tela: **Agente de IA › Agentes › (agente) › aba "Configuração"**
 | Tamanho máximo por bolha (80–4000) | `split_max_chars` | inteiro | **600** | 80–4.000 | não | Teto de cada bolha (3.7). |
 | Passar para uma pessoa · "Deixar o agente chamar uma pessoa quando perceber que não é caso dele" | `handoff_tool_enabled` | booleano | verdadeiro | — | não | Oferece a ferramenta `request_human_handoff`. |
 | (palavras de passagem) | `handoff_keywords` | lista | `["falar com humano","atendente","pessoa real"]` | até 20, cada 1–60 | não | Disparo determinístico de humano, antes do modelo. |
+| Quem recebe as passagens | `handoff_target_user_id` | pessoa da equipe | vazio | membro `agent`+ | não | Atribui a conversa e dá dono ao aviso na passagem e no caso (migration 5003). |
 | (assunto jurídico) | `handoff_legal_enabled` | booleano | verdadeiro | — | não | Muda a descrição da ferramenta de passagem para incluir assunto jurídico (`inbound-turn.ts:286`). |
 | Pedir ajuda sem sair da conversa | `cases_enabled` | booleano | **falso** | — | não | Liga `open_human_case`/`provide_case_update` e o bloco de casos (3.2) e arma o portão `case_promise`. |
 | Propostas comerciais · "Deixar o agente rascunhar uma proposta…" | `proposal_ai_draft_enabled` | booleano | verdadeiro | — | não | Rascunho de proposta (capacidade `propostas`). |
@@ -885,8 +886,19 @@ Fonte: `lib/agent-engine/agent/human-handoff.ts:1-30`. **[verificado]**
 - **O que acontece:** `contacts.force_human = true`; a conversa vai de `ai_handling` para `pending`,
   `bot_silenced_until = 'infinity'`, `last_handoff_at`/`reason`; os follow-ups pendentes do lead são
   **cancelados**; abre ou enriquece um item na **Central** (`agent_inbox_items`, `kind = 'handoff'`).
-- **Quem é notificado:** a Central de avisos da organização (a tela). **[inferido]** notificação push
-  ou e-mail ao time: não verifiquei se o item da Central gera push.
+- **Quem é notificado:** a Central de avisos da organização (tela e sino) e **push no celular** de
+  quem tem papel para ver a Central (`lib/notifications/push-dos-avisos.ts`, frases fixas, sem dado do
+  cliente). E-mail: não. WhatsApp da equipe: só para **caso** aberto, num número de suporte da
+  organização (`lib/escalacao/aviso-ao-suporte.ts`), não por membro. **[verificado]**
+- **Quem recebe as passagens** (campo do agente, card "Passar para uma pessoa"; coluna
+  `ai_agent_versions.handoff_target_user_id`, migration 5003). Vazio = como acima. Com uma pessoa da
+  equipe escolhida, toda passagem e todo caso abertos por esse agente: **atribuem a conversa** a ela
+  (`fn_conversation_assign`, a mesma da distribuição e do `crm_assign_conversation`; motivo `handoff`
+  na passagem e `routing` no caso, que não cala a IA) e criam o aviso da Central **com dono**
+  (`para_user_id`): só ela vê o aviso, e o push vai só ao celular dela, com o nome do cliente e o
+  motivo no corpo (que a tela bloqueada só mostra no modo "nome e prévia"). Pessoa que saiu da equipe
+  não recebe: a passagem vai para a fila. Não há fila/equipe nomeada no produto: o destinatário é uma
+  pessoa. **[verificado]** (`tests/invariants/passagem-com-destinatario.test.ts`).
 - **A IA pausa:** sim, pelo `force_human` (portão `stop`, motivo `atendimento_com_humano`).
 - **Volta:** quando alguém clica em **"Devolver ao automático"** (o agente nunca se libera sozinho;
   `crm_resume_ai_attendance` é só humano). Opcional: **devolução automática** depois de N minutos sem
@@ -1160,8 +1172,8 @@ Legenda: **Atende** · **Parcial** · **Não atende**.
 | 10 | Versões Padrão (eSIM) × Anatel (chip físico) | **Atende** | Atributo `lista` "Versão" (Padrão, Anatel), pesquisável; filtro `{"versao": "Anatel"}` | migration 5002 | Regra de quando oferecer cada versão continua no prompt. |
 | 11 | Consultar se aparelho usado é aceito, sem informar valor, e encaminhar | **Atende** | **Produtos › Troca** com os modelos aceitos (abatimento 0) + prompt "não informe valor" + passagem para humano | `comercio.ts:398` | A descrição da ferramenta fala em descontar o abatimento; o prompt precisa sobrepor. |
 | 12 | Entrada no Pix + restante parcelado, mesma fórmula | **Atende** com ferramenta | Ferramenta de código com `valor_a_vista`, `entrada`, `parcelas` (exemplo 5.4) | `codigo.ts` | — |
-| 13 | Passar para o Gabriel com motivo e resumo estruturado, pausar e não vender | **Parcial** | `request_human_handoff` com `por_que`, `o_que_tentei`, `cliente_quer`; pausa por `force_human` | `human-handoff.ts` | Não há campos estruturados (produto, cor, modalidade, preço, região) nem destinatário: o resumo vai em texto nos campos livres; direcionar ao Gabriel pela distribuição ou `crm_assign_conversation`. |
-| 14 | Notificar o time e mover o lead de estágio | **Parcial** | Item na Central (`agent_inbox_items`); `update_lead_state` para mover | `human-handoff.ts:14` | Push ou WhatsApp para o time: não verificado. |
+| 13 | Passar para o Gabriel com motivo e resumo estruturado, pausar e não vender | **Atende** (resumo em texto) | `request_human_handoff` com `por_que`, `o_que_tentei`, `cliente_quer`; pausa por `force_human`; **"Quem recebe as passagens" = Gabriel** | `human-handoff.ts`; migration 5003 | Campos estruturados (produto, cor, modalidade, preço, região) seguem em texto nos campos livres. |
+| 14 | Notificar o time e mover o lead de estágio | **Atende** | Aviso na Central e push no celular (do Gabriel, com "Quem recebe as passagens"); `update_lead_state` para mover | `push-dos-avisos.ts`; `human-handoff.ts` | WhatsApp por membro da equipe: não existe (só o número de suporte, para casos). |
 | 15 | Pausar quando humano responde; permitir reativar | **Atende** | 5 min deslizantes após cada resposta humana; "Assumir"/"Pausar IA" para durável; "Devolver ao automático" | `messages/_handler.ts:415` | Os 5 min não são configuráveis. |
 | 16 | Resetar histórico para testes | **Parcial** | Fechar a conversa → próximo atendimento com histórico novo | `fn_service_inbound` | Checkpoint e notas continuam. Desenvolver: botão "reiniciar memória do contato" para testes. |
 | 17 | Guardar nome, cidade, produto etc. e retomar dias depois | **Parcial** | Histórico da conversa (20 mensagens), resumo acumulado e **notas do lead** (`save_lead_note`, persistem entre conversas) | `ritual.ts`; `inbound-turn.ts:411` | Não há campos próprios de cidade/estado no contexto; depender de notas e do prompt mandando salvar. Depois de 24 h no Instagram, só se o cliente escrever primeiro. |

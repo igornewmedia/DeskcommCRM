@@ -234,7 +234,7 @@ interface SetupMetadata {
 // "O rascunho foi alterado" — o que a 0498 (inbound_debounce_ms) fez nas 5 specs de
 // tests/invariants/prospecting-agent-setup.test.ts.
 // ponytail: lista explícita; coluna nullable nova em ai_agent_versions entra aqui (#2004).
-const NULO_E_AUSENTE = new Set(["trigger_config", "inbound_debounce_ms", "max_sends_per_turn"]);
+const NULO_E_AUSENTE = new Set(["trigger_config", "inbound_debounce_ms", "max_sends_per_turn", "handoff_target_user_id"]);
 
 function versionHash(row: Record<string, unknown>) {
   const keys = Object.keys(versionCreateSchema.shape);

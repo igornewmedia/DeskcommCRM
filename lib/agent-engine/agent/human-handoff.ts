@@ -47,6 +47,7 @@ import {
   type OrigemDaPassagem,
 } from '@/lib/escalacao/passagem';
 import { traduzir } from '@/lib/i18n/dicionario';
+import { atribuirAoDestinatario, destinatarioDaPassagem } from './destinatario-da-passagem';
 import { normalizarIdioma, type Idioma } from '@/lib/i18n/idiomas';
 import { sqlContatoInterno } from '@/lib/contacts/tags-internas';
 import { ehOptOutProvavel } from '@/lib/opt-out/deteccao';
@@ -553,6 +554,15 @@ export async function performHumanHandoff(
   //     sumia. Agora ele vira ADENDO datado no item aberto.
   //
   // O corpo é CURTO e não carrega conversa — ver `corpoCurtoDoAviso`.
+  //
+  // "Quem recebe as passagens" (migration 5003): com destinatário, o aviso
+  // NASCE com dono — o push sai do evento do insert, e um dono posto depois
+  // chegaria tarde para ele. Sem destinatário, `$5` é null e nada muda.
+  const destinatario = await destinatarioDaPassagem(
+    db,
+    { tenantId: ids.tenantId, conversationId: ids.conversationId },
+    opts.log,
+  );
   await guardServiceEffect();
   await db.query(
     `with alvo as (
@@ -562,12 +572,13 @@ export async function performHumanHandoff(
         order by created_at desc limit 1
      ), adendo as (
        update agent_inbox_items i
-          set body = coalesce(i.body, '') || chr(10) || chr(10) || $3, severity = 'critical'
+          set body = coalesce(i.body, '') || chr(10) || chr(10) || $3, severity = 'critical',
+              para_user_id = coalesce($5::uuid, i.para_user_id)
          from alvo where i.id = alvo.id
        returning i.id
      )
-     insert into agent_inbox_items (organization_id, kind, severity, title, body, ref_kind, ref_id)
-     select $1, 'handoff', 'critical', $2, $3, 'conversation', $4
+     insert into agent_inbox_items (organization_id, kind, severity, title, body, ref_kind, ref_id, para_user_id)
+     select $1, 'handoff', 'critical', $2, $3, 'conversation', $4, $5::uuid
       where not exists (select 1 from alvo)`,
     [
       ids.tenantId,
@@ -580,8 +591,18 @@ export async function performHumanHandoff(
         ),
       await corpoDaCentral(db, ids.tenantId, opts),
       ids.conversationId,
+      destinatario,
     ],
   );
+  if (destinatario) {
+    await atribuirAoDestinatario(
+      db,
+      { tenantId: ids.tenantId, conversationId: ids.conversationId },
+      destinatario,
+      'handoff',
+      opts.log,
+    );
+  }
 
   // (e) A IDA na linha do tempo do NEGÓCIO. `triggerHandoff` (o caminho do CRM)
   // já gravava `handoff_triggered`; este caminho — o do harness e o do "Assumir

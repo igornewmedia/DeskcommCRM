@@ -99,6 +99,18 @@ export const DICIONARIO: Traducoes = {
   "Código JS": { es: "Código JS" },
   // Fork 9004 — capacidade do produto ("Capacidade" já existe mais abaixo).
   "Ex.: 128GB": { es: "Ej.: 128GB" },
+  // Fork 5003 — quem recebe as passagens.
+  "Quem recebe as passagens": { es: "Quién recibe los traspasos" },
+  "Ninguém em especial (fica na fila da equipe)": { es: "Nadie en especial (queda en la cola del equipo)" },
+  "Pessoa que saiu da equipe": { es: "Persona que salió del equipo" },
+  "Quando o agente passar a conversa ou abrir um caso, a conversa é atribuída a essa pessoa e ela recebe o aviso na Central e no celular, com o motivo e o resumo.":
+    {
+      es: "Cuando el agente traspase la conversación o abra un caso, la conversación se asigna a esa persona y ella recibe el aviso en la Central y en el celular, con el motivo y el resumen.",
+    },
+  "A IA passou esta conversa para você.": { es: "La IA te pasó esta conversación." },
+  "A IA passou uma conversa para você": { es: "La IA te pasó una conversación" },
+  "A IA abriu um caso para você": { es: "La IA abrió un caso para ti" },
+  "O que falta": { es: "Lo que falta" },
   // Fork 5002 — atributos personalizados de produto.
   "Atributos dos produtos": { es: "Atributos de los productos" },
   "As informações próprias da loja em cada produto, que o atendente de IA lê no catálogo.":
