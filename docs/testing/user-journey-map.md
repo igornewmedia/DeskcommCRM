@@ -4090,3 +4090,15 @@ terão trace/vídeo. Não foi medido download na janela anterior à persistênci
 do worker, viewer PDF ou aplicativo externo. O PASS de UX deste head não
 substitui os cinco checks obrigatórios: o verify antigo falhou no teste de
 relógio, cujo reparo central entra pela composição da main, sem repetir a rodada antiga.
+
+### Máximo de mensagens por resposta, por agente (fork, migration 5001)
+
+Agentes › (agente) › aba Configuração › card "Estilo de resposta" › "Máximo de
+mensagens por resposta (1–10)". Provado pela tela em ambiente local (build de
+produção na porta 3001, banco do Supabase local com a migration aplicada):
+preencher 6 e "Salvar rascunho" gravou `max_sends_per_turn = 6` na versão
+rascunho, conferido no banco; depois o valor foi devolvido a vazio. Captura:
+`evidence/maximo-de-mensagens-por-agente/campo-salvo-com-6.jpg`. O efeito no
+turno (6 bolhas com a instalação em 2, excedente junto na última) é medido em
+`tests/invariants/limite-de-envios-por-turno.test.ts`. Não medido pela tela: a
+aba Teste com o valor novo (ela roda o mesmo turno do invariante).
