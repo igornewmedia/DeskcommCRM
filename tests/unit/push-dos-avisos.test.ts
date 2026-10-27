@@ -105,6 +105,32 @@ describe("aviso da Central → celular", () => {
     });
   });
 
+  it("passagem DIRECIONADA (migration 5003): vai só à pessoa, e o cliente fica só no corpo", async () => {
+    vi.mocked(createAdminClient).mockReturnValue(banco({
+      agent_inbox_items: {
+        id: "i9", kind: "handoff", ref_kind: "conversation", ref_id: "c9",
+        title: "Handoff humano solicitado — assumir a conversa",
+        body: "Quer o iPhone 17 Pro Max laranja e pediu desconto.\n\nResumo…",
+        para_user_id: "u-gabriel",
+      },
+      organizations: { locale: "pt-BR" },
+      conversations: { contacts: { name: "Maria Souza" } },
+    }) as never);
+    await webPushInboundHandler.handle(evento("central.aviso_criado", { item_id: "i9" }));
+    const [, payload, para] = vi.mocked(enviarPushDaOrg).mock.calls[0]!;
+    expect(payload).toEqual({
+      title: "A IA passou uma conversa para você",
+      body: "Maria Souza — Quer o iPhone 17 Pro Max laranja e pediu desconto.",
+      // Com a tela bloqueada no modo "nome", nada do cliente aparece.
+      corpoSemPrevia: "A IA passou esta conversa para você.",
+      tag: "aviso:i9",
+      href: "/app/inbox/c9",
+    });
+    expect(payload.title).not.toContain("Maria");
+    expect(para).toEqual({ papelMinimo: PAPEL_MINIMO_DA_CENTRAL, soUsuario: "u-gabriel" });
+    expect(filtros).toContainEqual(["conversations", "organization_id", ORG]);
+  });
+
   it("passagem de clone antigo (ref no contato) abre o contato", async () => {
     vi.mocked(createAdminClient).mockReturnValue(banco({
       agent_inbox_items: { id: "i3", kind: "handoff", ref_kind: "contact", ref_id: "k1", title: "Handoff", body: null },

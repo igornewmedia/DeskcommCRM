@@ -199,6 +199,13 @@ const versionShapeSchema = z
      * ninguém travar o atendimento sem querer (#1856).
      */
     inbound_debounce_ms: z.number().int().min(0).max(60000).nullable().optional(),
+    /**
+     * Teto de mensagens enviadas ao cliente por turno. `null`/ausente = o
+     * `MAX_SENDS_PER_TURN` da instalação. O que passa do teto vai junto na última bolha.
+     */
+    max_sends_per_turn: z.number().int().min(1).max(10).nullable().optional(),
+    /** Quem recebe as passagens e os casos (membro da organização). `null` = a fila, como sempre. */
+    handoff_target_user_id: z.string().uuid().nullable().optional(),
     followup: followupConfigSchema,
     // ── Papel OPERADOR (spec 16 §3.2) ───────────────────────────────────────
     // Todos com `.default(...)`, e é o que mantém retrocompatível: agent e

@@ -19,7 +19,9 @@
  * O texto sai no idioma da ORGANIZAÇÃO — ninguém está logado quando o push sai
  * — e, com UMA exceção que é decisão do dono do produto, não carrega dado do
  * cliente: o aviso de proposta rascunhada usa o `title` da Central, que nomeia a
- * proposta e a contraparte (ver o ramo dele abaixo). Nos outros, o push aparece
+ * proposta e a contraparte (ver o ramo dele abaixo). A passagem DIRECIONADA a
+ * uma pessoa (migration 5003) leva o cliente e o motivo só no CORPO, que a tela
+ * bloqueada só mostra no modo "nome e prévia". Nos outros, o push aparece
  * na tela bloqueada sem nome de ninguém, e quem precisa do dado toca e abre o
  * contexto com a permissão que tem. O destino é o mesmo que a Central daria ao
  * aviso (`REFERENCIAS_DE_AVISO`).
@@ -133,6 +135,31 @@ async function montarPush(admin: SupabaseClient, orgId: string, item: Aviso): Pr
       title: truncar(item.title),
       body,
       corpoSemPrevia: body,
+      tag,
+      href: destinoDaPassagem(item),
+    };
+  }
+
+  // Passagem ou caso DIRECIONADO a uma pessoa ("Quem recebe as passagens",
+  // migration 5003): o corpo diz quem é o cliente e o motivo que a IA escreveu.
+  // O dado do cliente fica SÓ no corpo, que só aparece com a tela bloqueada no
+  // modo "nome e prévia"; no modo "nome" saem o título e a frase fixas, e no
+  // "oculto", nada. O aviso da empresa, sem dono, segue nas frases fixas abaixo.
+  if (som === "pessoa" && item.para_user_id && item.ref_kind === "conversation" && item.ref_id) {
+    const { data: conversa } = await admin
+      .from("conversations")
+      .select("contacts(name)")
+      .eq("organization_id", orgId)
+      .eq("id", item.ref_id)
+      .maybeSingle();
+    const nome = (conversa as { contacts?: { name?: string | null } | null } | null)?.contacts?.name?.trim();
+    const fixo = traduzir("A IA passou esta conversa para você.", idioma);
+    const motivo = (item.body ?? "").split("\n").find((l) => l.trim() !== "")?.trim();
+    const quemEPorque = [nome, motivo].filter(Boolean).join(" — ");
+    return {
+      title: traduzir("A IA passou uma conversa para você", idioma),
+      body: truncar(quemEPorque || fixo),
+      corpoSemPrevia: fixo,
       tag,
       href: destinoDaPassagem(item),
     };

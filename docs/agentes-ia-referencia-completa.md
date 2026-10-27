@@ -172,10 +172,10 @@ transporte pelo `provider` da sessão do canal (`app/api/v1/messages/_handler.ts
 | PDF | Texto extraído (até 8.000 caracteres); com multimodal, também o arquivo. Documento que não é PDF: **nada**. | **[verificado]** `derive.ts` |
 | Vídeo | Desligado por padrão ("vídeo com a leitura desligada, que é o padrão"). Ligado, vira áudio + quadros. | **[verificado]** `derivable.ts` (comentário de `DERIVACAO_TERMINADA`) |
 | Sticker (figurinha) | **Nada** (sem derivado). Quando a mídia não pode ser lida, o modelo recebe o marcador `"[o cliente enviou uma mídia que não consegui interpretar]"`. | **[verificado]** `derive.ts`, `derivable.ts` (`MARCADOR_NAO_LIDA`) |
-| Reação a story / reação a mensagem | **NÃO EXISTE** no parser do Instagram: os eventos aceitos são só `message.received/sent/delivered/read/failed`. | **[verificado]** `parser.ts:7-13` |
-| Resposta a story | Não há campo de story no parser. Se a Zernio mandar como `message.received` com texto/anexo, entra como mensagem comum, **sem** dizer que é resposta a story. | **[verificado]** schema; **[inferido]** o formato da Zernio |
-| Compartilhamento de post | Mesmo caso: entra só se vier como anexo `{type,url}`; nada identifica que é um post. | **[inferido]** |
-| Mensagem vinda de anúncio (click-to-DM) e origem do anúncio | **NÃO chega à IA no Instagram.** O parser grava `referral: null` sempre (`parser.ts:76`). O bloco "## Origem deste contato — o anúncio que ele clicou" existe na abertura do turno (`abertura/ritual.ts:117`), mas só é preenchido pelos canais que trazem `referral` (WhatsApp oficial). | **[verificado]** |
+| Reação a mensagem | **Registrada, sem disparar a IA.** `reaction.received` (documentado pela Zernio: `action`, `emoji`, `platformMessageId`) vira linha `type='reaction'` ligada à mensagem reagida (`lib/channels/reacao.ts`, a mesma do WhatsApp), aparece sobre o balão na conversa, não move a conversa e o banco não emite evento para a IA. Emoji vazio = reação removida. Conta conectada antes desta versão recebe o evento depois de **"Ressincronizar webhook"** (Conexões › Redes sociais). Reação a **story**: a Zernio não documenta campo de story na reação; se chegar, entra como reação comum, ligada à mensagem citada. | **[verificado]** `parser.ts` (`parseSocialReaction`), `social/ingest.ts`; **[inferido]** reação a story |
+| Resposta a story / menção em story | Anexo de tipo `story_reply`/`story*` ganha o marcador **"[o cliente respondeu ao seu story]"** antes do texto; `story_mention`, **"[o cliente mencionou você no story dele]"**. Os nomes de tipo são os da Meta, **não medidos** num payload real da Zernio (a documentação dela não descreve). A descrição da imagem do story por visão **não** foi ligada: o anexo de story não passa pela derivação de imagem. | **[verificado]** o marcador (`marcadorDoAnexo`); **[inferido]** o formato da Zernio |
+| Compartilhamento de post | Anexo `share`/`ig_post`/`ig_reel` ganha o marcador **"[o cliente compartilhou um post do Instagram]"**. Mesma ressalva: tipos não medidos em payload real; a imagem do post não é descrita por visão. | **[verificado]** marcador; **[inferido]** formato |
+| Mensagem vinda de anúncio (click-to-DM) e origem do anúncio | **Chega.** `metadata.referral` (ou `metadata.ad`) com `ad_id` vira `referral` no formato do extrator (`referralDoInstagram`, `parser.ts`), e o bloco "## Origem deste contato — o anúncio que ele clicou" passa a ser preenchido também no Instagram (título do anúncio de `ads_context_data.ad_title`). Link orgânico (sem `ad_id`) não conta como anúncio. Pela documentação da Zernio, o 1º `message.received` do click-to-DM costuma vir sem referral; o dado chega no seguinte. | **[verificado]** parser; **[inferido]** payload real |
 | "Digitando…" | **NÃO EXISTE** no Instagram: a presença só sai quando o adaptador tem `signalTyping`, e só o do WAHA tem (`lib/channels/adapters/waha.ts:182`; `lib/messaging/presenca.ts:91`). A **espera** antes da 1ª bolha continua acontecendo, só não aparece o indicador. | **[verificado]** |
 | Rate limit de envio | `minIntervalMs: 1000` declarado para `zernio_social` (`capabilities.ts:77`). O anti-ban (aquecimento, teto diário, intervalo) é **desligado** porque `banRisk: false` (`pacing/engine.ts:120`). A **janela de horário (padrão 7h às 22h) continua valendo** — ver 3.8. | **[verificado]** |
 
@@ -227,6 +227,7 @@ Tela: **Agente de IA › Agentes › (agente) › aba "Configuração"**
 | Tamanho máximo por bolha (80–4000) | `split_max_chars` | inteiro | **600** | 80–4.000 | não | Teto de cada bolha (3.7). |
 | Passar para uma pessoa · "Deixar o agente chamar uma pessoa quando perceber que não é caso dele" | `handoff_tool_enabled` | booleano | verdadeiro | — | não | Oferece a ferramenta `request_human_handoff`. |
 | (palavras de passagem) | `handoff_keywords` | lista | `["falar com humano","atendente","pessoa real"]` | até 20, cada 1–60 | não | Disparo determinístico de humano, antes do modelo. |
+| Quem recebe as passagens | `handoff_target_user_id` | pessoa da equipe | vazio | membro `agent`+ | não | Atribui a conversa e dá dono ao aviso na passagem e no caso (migration 5003). |
 | (assunto jurídico) | `handoff_legal_enabled` | booleano | verdadeiro | — | não | Muda a descrição da ferramenta de passagem para incluir assunto jurídico (`inbound-turn.ts:286`). |
 | Pedir ajuda sem sair da conversa | `cases_enabled` | booleano | **falso** | — | não | Liga `open_human_case`/`provide_case_update` e o bloco de casos (3.2) e arma o portão `case_promise`. |
 | Propostas comerciais · "Deixar o agente rascunhar uma proposta…" | `proposal_ai_draft_enabled` | booleano | verdadeiro | — | não | Rascunho de proposta (capacidade `propostas`). |
@@ -386,7 +387,7 @@ Novo turno de atendimento: o lead enviou uma mensagem (a última inbound do hist
 <headlines das notas do contato>
 
 ## Compromissos já marcados deste contato          ← só se houver
-## Origem deste contato — o anúncio que ele clicou  ← só se houver referral (não no Instagram)
+## Origem deste contato — o anúncio que ele clicou  ← só se houver referral (WhatsApp oficial e Instagram)
 
 ## Contexto do lead (contato + últimas mensagens)
 (O e-mail não está confirmado no cadastro. ...)    ← só se e-mail for nulo
@@ -471,6 +472,7 @@ tokens**. Para medir o prefixo real existe `scripts/ops-count-prefix.ts` (citado
 | Mensagens de atendente humano | **Entram.** O filtro é `direction in ('inbound','outbound')`, sem separar IA de humano | `get-lead-context.ts:263-272` |
 | Mensagens recebidas com a IA pausada | **Entram** (são `inbound` da mesma conversa e do mesmo atendimento) | **[inferido]** pela mesma consulta |
 | Conversas antigas do mesmo contato | **Não entram** como mensagens. Só da conversa atual, e das mensagens do cliente só as do atendimento atual (`service_revision`). O que atravessa conversas é o checkpoint/resumo (por contato) e as notas (`save_lead_note`, índice de até 500 tokens `LEAD_NOTES_INDEX_MAX_TOKENS`) | `get-lead-context.ts:266-271`; `env.ts:201` |
+| Reiniciar a memória de um contato | Cabeçalho da conversa › **"Reiniciar memória da IA"** (gerente+). Fecha o atendimento (as mensagens saem do contexto sem ser apagadas), apaga `lead_checkpoints` (checkpoint e resumo) e `lead_notes`, volta `lead_state` para `new` (com transição `memoria_da_ia_reiniciada`) e grava `contacts.ia_memoria_desde`, que tira do contexto os desfechos fechados antes. Auditado como `ai.memory_reset`. **[verificado]** `tests/invariants/reiniciar-memoria-da-ia.test.ts` | `fn_reiniciar_memoria_da_ia` (migration 5004) |
 
 **[verificado]** salvo onde marcado.
 
@@ -512,10 +514,13 @@ Regra exata (`splitIntoBubbles`, `lib/agent-engine/agent/split-message.ts:22`) *
    dígitos, como em "R$ 10.990", **não** conta) e, em último caso, por palavra.
 3. Quebra de linha simples (`\n`) **dentro** do parágrafo é mantida: um orçamento de várias linhas sem
    linha em branco no meio vai numa bolha só.
-4. **Número máximo de partes = mensagens restantes no teto do turno**: `MAX_SENDS_PER_TURN`, padrão
-   **3** (`env.ts:243`; `DEFAULT_MAX_SENDS_PER_TURN = 3`, `inbound-turn.ts:634`), **bolhas incluídas**.
-   O que passar do teto vai **junto na última bolha**, separado por linha em branco
-   (`splitForSend`, `split-message.ts:210`). É variável **da instalação**, não do agente.
+4. **Número máximo de partes = mensagens restantes no teto do turno**, **bolhas incluídas**. O teto é
+   o campo **"Máximo de mensagens por resposta (1–10)"** do agente (aba Configuração, card "Estilo de
+   resposta"; coluna `ai_agent_versions.max_sends_per_turn`, migration 5001). Vazio = `MAX_SENDS_PER_TURN`
+   da instalação, padrão **3** (`env.ts:243`; `DEFAULT_MAX_SENDS_PER_TURN = 3`). Vale também na aba
+   Teste, que roda o mesmo turno. O que passar do teto vai **junto na última bolha**, separado por
+   linha em branco (`splitForSend`, `split-message.ts:210`). **[verificado]**
+   (`tests/invariants/limite-de-envios-por-turno.test.ts`).
 5. **Intervalos:** antes da 1ª bolha, atraso humano de `ATRASO_NOTAR_MS` 900 + 22 ms por caractere da
    1ª bolha, entre 1.200 e 7.500 ms, descontado o tempo que o turno já gastou
    (`atraso-humano.ts:56-65`). Entre bolhas, `throttle_ms` (1.200) + aleatório até `jitter_max_ms` (800)
@@ -536,7 +541,7 @@ Escreva cada resposta numa ÚNICA chamada de send_message. Resposta curta vai nu
 **Como escrever o prompt para "um orçamento por mensagem":** peça que cada orçamento seja **um
 parágrafo**, com quebras de linha simples entre as linhas do orçamento e **uma linha em branco** entre
 um orçamento e o seguinte; ligue "Responder em várias mensagens curtas"; ponha `split_max_chars` maior
-que o maior orçamento (ex.: 1.000); e suba `MAX_SENDS_PER_TURN` da instalação para o número de
+que o maior orçamento (ex.: 1.000); e ponha em "Máximo de mensagens por resposta" o número de
 mensagens desejado (6 para a Nume). **Não** peça para chamar `send_message` várias vezes. **[inferido]**
 a partir das regras acima.
 
@@ -558,8 +563,12 @@ Há **duas** janelas diferentes:
 
 - **Fuso:** o do agente (`business_hours.timezone`) para a janela 1; o da conexão para a janela 2; o da
   organização para o bloco `## Agora` (`fuso-da-org.ts`). Padrão `America/Sao_Paulo`.
-- **Feriados:** **NÃO EXISTE** calendário de feriados no agente. **[inferido]** (não achei referência no
-  motor).
+- **Feriados** (Configurações › Empresa › card "Feriados", `organizations.settings.feriados`;
+  desligado por padrão). Ligado, o `## Agora` ganha "Hoje é feriado: X." (ou "Hoje não é feriado."),
+  "Amanhã é feriado: X." quando for o caso e "Próximo dia útil (segunda a sexta, sem feriado): …".
+  Nacionais do Brasil calculados por ano, sem serviço externo (`lib/lgpd/holidays-br.ts`, que conta
+  Carnaval e Corpus Christi como feriado); próprios da empresa numa lista editável (data e nome).
+  **[verificado]** `lib/tempo/feriados.test.ts`.
 
 ### 3.9 Estados do agente, versões
 
@@ -706,14 +715,18 @@ nos arquivos de `lib/mcp/tools/catalogo/`:
 Fonte: `lib/mcp/tools/comercio.ts:92-397` e `lib/catalogo/busca.ts`. **[verificado]**
 
 - **Entrada:** `termo` (texto, mínimo 2), `limite` (1–20, padrão **8**), `somente_disponiveis`
-  (padrão **verdadeiro**).
+  (padrão **verdadeiro**) e `filtros` (opcional): filtro **exato** por atributo personalizado, pela
+  chave, ex.: `{"pronta_entrega": true}` ou `{"versao": "Anatel"}`. Texto compara sem maiúsculas;
+  booleano ausente conta como falso. Chave que a loja não tem é ignorada e avisada em `mensagem`.
 - **Varredura:** lê `catalog_products` da organização com `ativo = true`, em páginas de 1.000
   (`TAMANHO_DA_PAGINA`) até 10 páginas (`PAGINAS_MAXIMAS`) = **10.000 produtos**; passou disso, a busca
   avisa "varredura parcial".
 - **Normalização:** sem acento, minúsculas, pontuação vira espaço (`normalizar`, `busca.ts:44`). Ignora
   `de, do, da, com, para, por, the, e, o, a, um, uma`.
-- **Campos pesquisados:** `nome`, `marca`, `categoria`, `capacidade` e `codigo` (`pontuar`,
-  `busca.ts:108`). **`cor` e `descricao` NÃO são pesquisados.**
+- **Campos pesquisados:** `nome`, `marca`, `categoria`, `capacidade`, **`cor`**, `codigo` e os
+  **atributos marcados como pesquisáveis** (`textoDoAlvo`, `busca.ts`; migration 5002). Atributo
+  booleano pesquisável entra pelo rótulo quando verdadeiro ("pronta entrega" acha quem tem).
+  **`descricao` NÃO é pesquisada.**
 - **Números são filtro exato:** "256gb" vira o número `256`, que precisa aparecer no alvo
   (com ou sem unidade). Palavras são difusas: igual = 1; prefixo (≥ 3 letras) = 0,9; 1 edição (≥ 4
   letras) = 0,75 (mesma inicial) ou 0,5; 2 edições (≥ 5 letras) = 0,6. Nota = média das palavras.
@@ -736,23 +749,39 @@ Fonte: `lib/mcp/tools/comercio.ts:92-397` e `lib/catalogo/busca.ts`. **[verifica
       "cor": "Laranja",
       "capacidade": "256GB",
       "disponivel": true,
-      "fotos": 2
+      "fotos": 2,
+      "atributos": { "Pronta entrega": "sim", "Preço no cartão": "R$ 7.851,00" }
     }
   ],
+  "legenda_dos_atributos": {
+    "Pronta entrega": "sim = em estoque em Brasília, pagamento na entrega (filtro: pronta_entrega)"
+  },
   "empate": false
 }
 ```
+
+  `atributos` traz só os **visíveis para a IA**, já formatados (moeda em reais, booleano em
+  "sim"/"não"). O significado de cada um vem **uma vez** em `legenda_dos_atributos` (só os que têm
+  descrição e aparecem no resultado), com a chave para usar em `filtros`. **[verificado]**
+  (`tests/unit/atributos-na-busca-da-ia.test.ts`).
 
   A quantidade em estoque **não** vai ao modelo. Vazio: `{"produtos": [], "motivo":
   "nao_encontrado" | "varredura_parcial" | "sem_estoque", "mensagem": "..."}`.
 - **Campos do produto** (`lib/schemas/produtos.ts`): `codigo` (auto), `nome`, `descricao`, `marca`,
   `categoria`, `cor`, `capacidade`, `preco_cents`, `moeda`, `custo_cents`, `controla_estoque`,
   `quantidade`, `ativo`, `origem`, `imagem_url`, `fotos`. `custo_cents` **não** vai ao modelo.
-- **Campos personalizados, JSON ou metadados no produto: NÃO EXISTE.**
+- **Atributos personalizados** (migration 5002): cada organização define os seus em **Produtos ›
+  Atributos dos produtos** (link no topo de Produtos; só `manager`+ altera), até **30**. Cada atributo
+  tem chave (slug único), nome, tipo (`texto`, `numero`, `booleano`, `moeda` em centavos, `lista` de
+  opções fixas), descrição para a IA, "a IA vê" (padrão sim), "entra na busca" (padrão não) e ordem.
+  Os valores ficam em `catalog_products.atributos` (jsonb), validados contra a definição em toda
+  escrita (tela e API); tipo errado ou chave inexistente = 422. Remover um atributo apaga o valor dele
+  de todos os produtos. Chave e tipo não mudam depois de criados. **[verificado]**
 - **Variações** (um produto com várias cores ou capacidades e preço por variação): **NÃO EXISTE.**
   Cada combinação precisa ser **um produto**.
-- **Mais de uma tabela de preço por produto** (por região ou modalidade): **NÃO EXISTE.** Um
-  `preco_cents` por produto.
+- **Mais de uma tabela de preço por produto** (por região ou modalidade): um `preco_cents` por
+  produto, mais quantos atributos do tipo `moeda` a loja definir (ex.: "Preço no cartão",
+  "Preço Brasília").
 - **Uma organização com estoque e outra sem:** há uma sessão em andamento que está implementando essa
   configuração por empresa. Na `v1.89.2` vale a regra acima. **[verificado]** o código atual.
 
@@ -862,8 +891,19 @@ Fonte: `lib/agent-engine/agent/human-handoff.ts:1-30`. **[verificado]**
 - **O que acontece:** `contacts.force_human = true`; a conversa vai de `ai_handling` para `pending`,
   `bot_silenced_until = 'infinity'`, `last_handoff_at`/`reason`; os follow-ups pendentes do lead são
   **cancelados**; abre ou enriquece um item na **Central** (`agent_inbox_items`, `kind = 'handoff'`).
-- **Quem é notificado:** a Central de avisos da organização (a tela). **[inferido]** notificação push
-  ou e-mail ao time: não verifiquei se o item da Central gera push.
+- **Quem é notificado:** a Central de avisos da organização (tela e sino) e **push no celular** de
+  quem tem papel para ver a Central (`lib/notifications/push-dos-avisos.ts`, frases fixas, sem dado do
+  cliente). E-mail: não. WhatsApp da equipe: só para **caso** aberto, num número de suporte da
+  organização (`lib/escalacao/aviso-ao-suporte.ts`), não por membro. **[verificado]**
+- **Quem recebe as passagens** (campo do agente, card "Passar para uma pessoa"; coluna
+  `ai_agent_versions.handoff_target_user_id`, migration 5003). Vazio = como acima. Com uma pessoa da
+  equipe escolhida, toda passagem e todo caso abertos por esse agente: **atribuem a conversa** a ela
+  (`fn_conversation_assign`, a mesma da distribuição e do `crm_assign_conversation`; motivo `handoff`
+  na passagem e `routing` no caso, que não cala a IA) e criam o aviso da Central **com dono**
+  (`para_user_id`): só ela vê o aviso, e o push vai só ao celular dela, com o nome do cliente e o
+  motivo no corpo (que a tela bloqueada só mostra no modo "nome e prévia"). Pessoa que saiu da equipe
+  não recebe: a passagem vai para a fila. Não há fila/equipe nomeada no produto: o destinatário é uma
+  pessoa. **[verificado]** (`tests/invariants/passagem-com-destinatario.test.ts`).
 - **A IA pausa:** sim, pelo `force_human` (portão `stop`, motivo `atendimento_com_humano`).
 - **Volta:** quando alguém clica em **"Devolver ao automático"** (o agente nunca se libera sozinho;
   `crm_resume_ai_attendance` é só humano). Opcional: **devolução automática** depois de N minutos sem
@@ -888,7 +928,7 @@ no `send_message`). **Gravar cidade/estado em campo próprio do contato: NÃO EX
 
 - **Passos:** `max_steps` (padrão 10, até 25). Cada chamada de ferramenta é um passo; ao atingir, o
   loop termina. **[verificado]** `inbound-turn.ts:2620`.
-- **Envios:** `MAX_SENDS_PER_TURN` (padrão 3) mensagens físicas; o `send_message` extra recebe "você já
+- **Envios:** o máximo de mensagens por resposta do agente, ou `MAX_SENDS_PER_TURN` (padrão 3) quando vazio; o `send_message` extra recebe "você já
   enviou N mensagens neste turno (teto: N)" (`inbound-turn.ts:3551-3557`).
 - **Disjuntor:** repetir a mesma chamada exata avisa na 2ª e bloqueia na 5ª; mesma ferramenta avisa na
   3ª e para na 8ª; sem progresso avisa na 3ª e bloqueia na 5ª (`TOOL_BREAKER_*`, `env.ts:245-250`).
@@ -1020,7 +1060,7 @@ Tela: **IA › Follow-ups** ("Fluxos"), e no agente o campo "Follow-up". **[veri
 | Base — recuperação | 5 trechos, similaridade ≥ 0,40, 2.000 tokens | — | `env.ts:256-258` | instalação |
 | Ferramentas por agente | 27 | ferramentas | `selecao-por-pacote.ts:83` | não |
 | Passos por turno | 10 (1–25) | chamadas | `validation.ts:172` | por agente |
-| Mensagens físicas por turno | 3 | mensagens | `env.ts:243` `MAX_SENDS_PER_TURN` | instalação |
+| Mensagens físicas por turno | 3 | mensagens | `max_sends_per_turn` do agente (1–10); vazio = `env.ts:243` `MAX_SENDS_PER_TURN` | agente / instalação |
 | Saída do modelo | 4.096 | tokens | `run-model-call.ts:213` | organização (`settings.llm.params`) |
 | Mensagem enviada | 4.096 | caracteres | `lib/schemas/messaging.ts:78` | não |
 | Bolha | 600 (80–4.000) | caracteres | `validation.ts:192` | por agente |
@@ -1031,7 +1071,7 @@ Tela: **IA › Follow-ups** ("Fluxos"), e no agente o campo "Follow-up". **[veri
 | Pausa após resposta humana | 300.000 | ms | `messages/_handler.ts:415` | não |
 | Devolução automática do handoff | 5–1.440 | minutos | `devolucao-automatica.ts:46-47` | organização |
 | Janela de 24 h (canais oficiais) | 24 | horas | `messaging-window.ts:28` | não |
-| Janela de resposta do canal | 7h–22h, domingo liberado | horário | `pacing/defaults.ts:125-131` | por conexão |
+| Janela de resposta do canal | 7h–22h, domingo liberado | horário | `pacing/defaults.ts:125-131` | por conexão — no Instagram, em Conexões › Redes sociais › Proteção de envio |
 | Intervalo mínimo do Instagram | 1.000 | ms | `capabilities.ts:77` | não |
 | Vetos de vocabulário antes de soltar | 2 | vetos | `inbound-turn.ts:597` | não |
 | Ferramenta HTTP — timeout | 1.000–30.000 (padrão 10.000) | ms | `vocabulario.ts:53-55` | por ferramenta |
@@ -1060,8 +1100,10 @@ A ordem importa: cada passo depende do anterior. **[inferido]** pela ordem que o
 1. **Conexões › Redes sociais** — conectar a conta do Instagram (Zernio). *Pré-requisito:* conta
    profissional do Instagram e credencial da Zernio. *Erro comum:* conta ligada sem webhook de
    recebimento (o canal fica `FAILED` com "recebimento_nao_configurado", `social/adapter.ts` `checkHealth`).
-2. **Conexões › (o canal) › proteção de envio** — ajustar a **janela de resposta** (padrão 7h–22h) se
-   a Nume responde à noite. *Erro comum:* esquecer, e a IA não responder depois das 22h.
+2. **Conexões › Redes sociais › (a conta do Instagram) › "Proteção de envio"** — ajustar a **janela
+   de resposta** (padrão 7h–22h): para 24 horas, início **0** e fim **24**; domingo já vem liberado.
+   (Até a versão deste documento o botão não existia para canal social: a lista de "Números por QR"
+   esconde os canais sociais.) *Erro comum:* esquecer, e a IA não responder depois das 22h.
 3. **IA › Credenciais** — chave do provedor (validada em segundo plano) e chave da OpenAI para áudio e
    base. *Erro comum:* publicar sem credencial validada (`credential_not_validated`).
 4. **IA › Provedores** — modelo do atendimento (com ferramentas) e modelos auxiliares baratos.
@@ -1076,8 +1118,8 @@ A ordem importa: cada passo depende do anterior. **[inferido]** pela ordem que o
     "Esperar antes de responder", follow-ups. Salvar = rascunho v1.
 12. **Aba Teste** — rodar o roteiro de situações; ler as verificações e as ações propostas.
 13. **Publicar** — confirmação; vale no próximo atendimento.
-14. **Instalação (`.env`)** — se precisar de mais de 3 mensagens por turno, `MAX_SENDS_PER_TURN` (é
-    variável da VPS, não da tela).
+14. **Máximo de mensagens por resposta** — aba Configuração › Estilo de resposta (1 a 10). Vazio usa
+    o `MAX_SENDS_PER_TURN` da instalação (padrão 3).
 
 ---
 
@@ -1125,22 +1167,22 @@ Legenda: **Atende** · **Parcial** · **Não atende**.
 
 | # | Requisito | Situação | Como (configuração/recurso) | Referência | Alternativa / a desenvolver |
 |---|---|---|---|---|---|
-| 1 | Responder no Direct, incluindo anúncio, reações e respostas a story | **Parcial** | Texto e anexos do Direct: sim, ligando o agente ao canal `zernio_social` | `selectable.ts:106`; `social/adapter.ts:104` | Anúncio (`referral: null`, `parser.ts:76`), reações (evento não existe) e resposta a story (sem campo): **não**. Desenvolver: ler `referral`, reação e contexto de story do payload da Zernio no `parser.ts` e preencher o bloco de origem. |
+| 1 | Responder no Direct, incluindo anúncio, reações e respostas a story | **Parcial** | Texto e anexos do Direct, ligando o agente ao canal `zernio_social`; anúncio (click-to-DM) preenche a origem; reações ficam no histórico sem disparar a IA; story e post compartilhado chegam com marcador | `social/parser.ts`; `social/ingest.ts` | Formato de story/compartilhamento **não medido** em payload real; imagem do story não é descrita por visão; "digitando…" não existe no Instagram. |
 | 2 | Áudio (transcrição), imagem (descrição), PDF (resumo) | **Atende** (PDF parcial) | Derivação automática; PDF é **extração** de texto (até 8.000), não resumo; com `multimodal_input`, o arquivo vai junto | `derive.ts` | Resumo do PDF: o modelo resume a partir do texto extraído. Precisa da chave da OpenAI ou de modelo com áudio. |
 | 3 | Agrupar mensagens e responder uma vez após ~20 s | **Atende** | "Esperar antes de responder (segundos)" = 20 | `validation.ts:201`; `debounce.ts` | A janela é ancorada na 1ª mensagem (não reinicia a cada mensagem). |
-| 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Teto padrão de **3** (`MAX_SENDS_PER_TURN`): mudar para 6 no `.env` da VPS. "Digitando…" **não aparece no Instagram** (a pausa acontece). |
-| 5 | Data, dia da semana e hora de Brasília (saudação, corte 14h, dias úteis em SP) | **Parcial** | Bloco `## Agora` em todo turno, com dia da semana, data, hora e fuso | `lib/tempo/agora.ts:77` | Feriados: **não existe** calendário. Desenvolver uma ferramenta de código com a lista de feriados, ou colocar a lista na Memória. Fuso da organização em `America/Sao_Paulo`. |
+| 4 | Até 6 mensagens, um orçamento por mensagem, pausa de digitação | **Parcial** | "Responder em várias mensagens curtas" + linha em branco entre orçamentos + `split_max_chars` ≥ maior orçamento | `split-message.ts:22,210` | Resolvido: "Máximo de mensagens por resposta" = 6 no agente (migration 5001). "Digitando…" **não aparece no Instagram** (a pausa acontece). |
+| 5 | Data, dia da semana e hora de Brasília (saudação, corte 14h, dias úteis em SP) | **Atende** | Bloco `## Agora` em todo turno, com dia da semana, data, hora e fuso; com **Feriados** ligado (Configurações › Empresa), diz se hoje é feriado e o próximo dia útil | `lib/tempo/agora.ts`; `lib/tempo/feriados.ts` | Feriados municipais de São Paulo/Brasília: cadastrar como feriados próprios. |
 | 6 | Emojis nos orçamentos, várias linhas | **Atende** | Nenhum portão remove emoji nem quebra de linha | `before-send.ts:1043` | A plataforma orienta "emoji só se o lead usar"; o prompt precisa dizer que nos orçamentos é obrigatório. |
-| 7 | Buscar por nome, capacidade e cor; preço por cor no iPhone | **Parcial** | Um produto por configuração **e cor**; capacidade é pesquisada | `busca.ts:108` | A **cor não é pesquisada**: incluir a cor no **nome** do produto ("iPhone 17 Pro Max 256GB Laranja") ou desenvolver a cor no `pontuar`. Preço único das outras linhas: um produto por configuração. |
+| 7 | Buscar por nome, capacidade e cor; preço por cor no iPhone | **Atende** | Um produto por configuração **e cor**; capacidade e **cor** são pesquisadas (migration 5002) | `busca.ts` (`textoDoAlvo`) | — Preço único das outras linhas: um produto por configuração. |
 | 8 | Quatro valores (cartão, 3x, 12x, à vista) calculados por fórmula fixa | **Atende** com ferramenta | Preço à vista no catálogo + **ferramenta de código JS** com a fórmula (5.4); o prompt manda nunca calcular de cabeça | `codigo.ts` | A fórmula (`Tabela_Margem_v2.md`) precisa ser escrita no código. |
-| 9 | Duas tabelas de preço (principal e pronta entrega Brasília) | **Não atende** | — | `comercio.ts` (um `preco_cents`) | Alternativas: produtos duplicados com categoria "Pronta entrega DF"; ou ferramenta HTTP para a planilha atual devolver as duas tabelas. Desenvolver: segundo preço por produto ou tabela de preço por região. |
-| 10 | Versões Padrão (eSIM) × Anatel (chip físico) | **Parcial** | Produtos separados ("… eSIM" / "… Anatel") e regra no prompt | catálogo | Sem campo próprio; depende do nome do produto e do prompt. |
+| 9 | Duas tabelas de preço (principal e pronta entrega Brasília) | **Atende** | Atributo booleano "Pronta entrega" + atributo `moeda` para o preço de Brasília; a IA filtra com `filtros: {"pronta_entrega": true}` | `comercio.ts`; migration 5002 | Alternativa antiga (produtos duplicados) deixa de ser necessária. |
+| 10 | Versões Padrão (eSIM) × Anatel (chip físico) | **Atende** | Atributo `lista` "Versão" (Padrão, Anatel), pesquisável; filtro `{"versao": "Anatel"}` | migration 5002 | Regra de quando oferecer cada versão continua no prompt. |
 | 11 | Consultar se aparelho usado é aceito, sem informar valor, e encaminhar | **Atende** | **Produtos › Troca** com os modelos aceitos (abatimento 0) + prompt "não informe valor" + passagem para humano | `comercio.ts:398` | A descrição da ferramenta fala em descontar o abatimento; o prompt precisa sobrepor. |
 | 12 | Entrada no Pix + restante parcelado, mesma fórmula | **Atende** com ferramenta | Ferramenta de código com `valor_a_vista`, `entrada`, `parcelas` (exemplo 5.4) | `codigo.ts` | — |
-| 13 | Passar para o Gabriel com motivo e resumo estruturado, pausar e não vender | **Parcial** | `request_human_handoff` com `por_que`, `o_que_tentei`, `cliente_quer`; pausa por `force_human` | `human-handoff.ts` | Não há campos estruturados (produto, cor, modalidade, preço, região) nem destinatário: o resumo vai em texto nos campos livres; direcionar ao Gabriel pela distribuição ou `crm_assign_conversation`. |
-| 14 | Notificar o time e mover o lead de estágio | **Parcial** | Item na Central (`agent_inbox_items`); `update_lead_state` para mover | `human-handoff.ts:14` | Push ou WhatsApp para o time: não verificado. |
+| 13 | Passar para o Gabriel com motivo e resumo estruturado, pausar e não vender | **Atende** (resumo em texto) | `request_human_handoff` com `por_que`, `o_que_tentei`, `cliente_quer`; pausa por `force_human`; **"Quem recebe as passagens" = Gabriel** | `human-handoff.ts`; migration 5003 | Campos estruturados (produto, cor, modalidade, preço, região) seguem em texto nos campos livres. |
+| 14 | Notificar o time e mover o lead de estágio | **Atende** | Aviso na Central e push no celular (do Gabriel, com "Quem recebe as passagens"); `update_lead_state` para mover | `push-dos-avisos.ts`; `human-handoff.ts` | WhatsApp por membro da equipe: não existe (só o número de suporte, para casos). |
 | 15 | Pausar quando humano responde; permitir reativar | **Atende** | 5 min deslizantes após cada resposta humana; "Assumir"/"Pausar IA" para durável; "Devolver ao automático" | `messages/_handler.ts:415` | Os 5 min não são configuráveis. |
-| 16 | Resetar histórico para testes | **Parcial** | Fechar a conversa → próximo atendimento com histórico novo | `fn_service_inbound` | Checkpoint e notas continuam. Desenvolver: botão "reiniciar memória do contato" para testes. |
+| 16 | Resetar histórico para testes | **Atende** | Botão **"Reiniciar memória da IA"** no cabeçalho da conversa (gerente+, com confirmação): fecha o atendimento, apaga checkpoint, resumo e notas do lead, volta o funil do agente para `new` e tira do contexto os desfechos anteriores; as mensagens ficam na conversa | `conversations/[id]/reiniciar-memoria`; migration 5004 | Não mexe no CRM (negócios, propostas) nem no `force_human` (use "Devolver ao automático"). |
 | 17 | Guardar nome, cidade, produto etc. e retomar dias depois | **Parcial** | Histórico da conversa (20 mensagens), resumo acumulado e **notas do lead** (`save_lead_note`, persistem entre conversas) | `ritual.ts`; `inbound-turn.ts:411` | Não há campos próprios de cidade/estado no contexto; depender de notas e do prompt mandando salvar. Depois de 24 h no Instagram, só se o cliente escrever primeiro. |
 | 18 | Mover entre Abertura, Descoberta, Recomendação, Preço, Fechamento, WhatsApp (ganho), Não comprou (perdido) | **Parcial** | Funil com essas etapas, cada uma mapeada a um dos 7 passos do agente | `move-lead-stage.ts` | "Não comprou" exige motivo humano (o agente não fecha como perdido sozinho); o avanço é só para a frente. |
 | 19 | Follow-up para quem recebeu preço e ficou em silêncio | **Parcial** | Fluxo com gatilho silêncio/etapa "Preço", armado no agente | `followup-turn.ts:36` | **Só dentro das 24 h** no Instagram; depois disso, não sai. |

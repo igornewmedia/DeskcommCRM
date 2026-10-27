@@ -4090,3 +4090,81 @@ terão trace/vídeo. Não foi medido download na janela anterior à persistênci
 do worker, viewer PDF ou aplicativo externo. O PASS de UX deste head não
 substitui os cinco checks obrigatórios: o verify antigo falhou no teste de
 relógio, cujo reparo central entra pela composição da main, sem repetir a rodada antiga.
+
+### Máximo de mensagens por resposta, por agente (fork, migration 5001)
+
+Agentes › (agente) › aba Configuração › card "Estilo de resposta" › "Máximo de
+mensagens por resposta (1–10)". Provado pela tela em ambiente local (build de
+produção na porta 3001, banco do Supabase local com a migration aplicada):
+preencher 6 e "Salvar rascunho" gravou `max_sends_per_turn = 6` na versão
+rascunho, conferido no banco; depois o valor foi devolvido a vazio. Captura:
+`evidence/maximo-de-mensagens-por-agente/campo-salvo-com-6.jpg`. O efeito no
+turno (6 bolhas com a instalação em 2, excedente junto na última) é medido em
+`tests/invariants/limite-de-envios-por-turno.test.ts`. Não medido pela tela: a
+aba Teste com o valor novo (ela roda o mesmo turno do invariante).
+
+### Atributos personalizados de produto (fork, migration 5002)
+
+Produtos › "Atributos dos produtos" (link no topo de Produtos). Provado pela
+tela em ambiente local (build de produção na porta 3001, Supabase local com a
+migration aplicada), como gerente:
+
+1. Criar "Pronta entrega" (Sim ou não, entra na busca, com descrição para a
+   IA) e "Preço no cartão" (Valor em dinheiro): os dois aparecem na lista —
+   `evidence/atributos-de-produto/01-definicoes.jpg`.
+2. Editar o iPhone 17 Pro Max: marcar "Pronta entrega", preencher "10.499,00"
+   e salvar gravou `{"pronta_entrega": true, "preco_no_cartao": 1049900}`;
+   reaberto, o formulário mostra os dois valores —
+   `evidence/atributos-de-produto/02-produto-com-atributos.jpg`.
+3. A ferramenta `crm_search_products` rodando contra o mesmo banco devolve os
+   atributos formatados, a legenda com o significado e a chave do filtro; o
+   filtro `{"pronta_entrega": true}` e a busca pela cor ("laranja") acham o
+   produto — `evidence/atributos-de-produto/03-busca-da-ia-no-banco-local.txt`.
+
+Não medido pela tela: atributo do tipo lista e número, remoção de atributo, e
+o turno completo do agente com o modelo de verdade (a ferramenta foi chamada
+direto). Medido por teste: PATCH parcial preserva as outras chaves, PUT
+substitui, tipo errado é 422 (`app/api/v1/products/[id]/route.test.ts`) e o
+isolamento entre organizações (`tests/invariants/rls-isolation.test.ts`).
+
+### Quem recebe as passagens, por agente (fork, migration 5003)
+
+Agentes › (agente) › aba Configuração › card "Passar para uma pessoa" › "Quem
+recebe as passagens". Provado pela tela em ambiente local (build de produção na
+porta 3001): o seletor lista quem pode receber conversa (`/api/v1/team/assignable`);
+escolher uma pessoa e "Salvar rascunho" gravou `handoff_target_user_id` na versão
+rascunho, conferido no banco e depois devolvido a vazio —
+`evidence/quem-recebe-as-passagens/01-campo-no-agente.jpg`. Achado na prova: três
+pessoas com o mesmo nome ("Dono") ficavam indistinguíveis; o seletor passou a
+mostrar nome e e-mail. O efeito (atribuição, aviso da Central com dono, caso que
+não cala a IA, pessoa que saiu da equipe) é medido em
+`tests/invariants/passagem-com-destinatario.test.ts`, e o push direcionado em
+`tests/unit/push-dos-avisos.test.ts`. Não medido: o push chegando num celular
+real, e a passagem disparada por um turno com modelo de verdade.
+
+### Reiniciar memória da IA de um contato (fork, migration 5004)
+
+Inbox › (conversa) › cabeçalho › "Reiniciar memória da IA" (gerente+). Provado
+pela tela em ambiente local (build de produção na porta 3001, banco local com o
+baseline atual), com um contato de teste semeado (mensagem, checkpoint, nota e
+funil em `negotiating`): o botão aparece na barra —
+`evidence/reiniciar-memoria-da-ia/01-botao-no-cabecalho.jpg` —; confirmado, a
+conversa foi para Fechada e o aviso "Memória da IA reiniciada" apareceu —
+`evidence/reiniciar-memoria-da-ia/02-depois-de-reiniciar.jpg`. No banco:
+checkpoints 0, notas 0, funil `new`, a mensagem continua, `ia_memoria_desde`
+preenchido e uma linha `ai.memory_reset` na auditoria. A confirmação do
+navegador (`window.confirm`) foi respondida por script: a ferramenta de prova
+não clica no diálogo nativo; o texto dela foi lido e é o esperado. O "próximo
+turno começa do zero" é medido em `tests/invariants/reiniciar-memoria-da-ia.test.ts`.
+
+### Feriados no bloco ## Agora (fork, sem migration)
+
+Configurações › Empresa › card "Feriados". Provado pela tela em ambiente local
+(build de produção na porta 3001): ligar "Informar feriados ao agente de IA",
+cadastrar 21/04/2026 "Aniversário de Brasília" e "Salvar feriados" gravou
+`organizations.settings.feriados` — `evidence/feriados-no-agora/01-card-feriados.jpg`.
+O bloco `## Agora` montado com a leitura real do banco (`feriadosDaOrganizacao`)
+diz, no dia 20, "Amanhã é feriado" e pula o 21 no próximo dia útil, e no dia 21
+"Hoje é feriado: Aniversário de Brasília" —
+`evidence/feriados-no-agora/02-bloco-agora-no-banco-local.txt`. Depois a chave
+foi removida da organização de teste. Não medido: o turno completo com o modelo.

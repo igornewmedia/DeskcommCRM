@@ -21,6 +21,8 @@ interface AssignableMember {
   user_id: string;
   role: string;
   full_name: string | null;
+  /** Para a tela distinguir quem não preencheu o nome (seletor do agente, migration 5003). */
+  email: string | null;
 }
 
 export async function GET(_req: NextRequest): Promise<Response> {
@@ -46,7 +48,7 @@ export async function GET(_req: NextRequest): Promise<Response> {
   const memberships = (rows ?? []) as Array<{ user_id: string; role: string }>;
 
   if (!isServiceRoleConfigured() || memberships.length === 0) {
-    const degraded: AssignableMember[] = memberships.map((m) => ({ ...m, full_name: null }));
+    const degraded: AssignableMember[] = memberships.map((m) => ({ ...m, full_name: null, email: null }));
     return ok(degraded, { requestId });
   }
 
@@ -57,6 +59,7 @@ export async function GET(_req: NextRequest): Promise<Response> {
       return {
         ...m,
         full_name: (userRes?.user?.user_metadata?.full_name as string | undefined) ?? null,
+        email: userRes?.user?.email ?? null,
       };
     }),
   );

@@ -27,6 +27,8 @@ function fakeConfig(agentId: string): PublishedAgentConfig {
     splitMessages: false,
     splitMaxChars: 900,
     inboundDebounceMs: null,
+    maxSendsPerTurn: null,
+    handoffTargetUserId: null,
     multimodalInput: false,
     casesEnabled: false,
     toolIds: [],

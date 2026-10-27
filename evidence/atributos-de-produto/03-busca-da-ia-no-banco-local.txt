@@ -1,0 +1,46 @@
+=== {"termo":"iphone 17 laranja"}
+{
+  "produtos": [
+    {
+      "codigo": "PRD-00004",
+      "nome": "iPhone 17 Pro Max",
+      "preco": "R$ 9.999,00",
+      "preco_cents": 999900,
+      "marca": "Apple",
+      "cor": "Laranja",
+      "disponivel": true,
+      "atributos": {
+        "Pronta entrega": "sim",
+        "Preço no cartão": "R$ 10.499,00"
+      }
+    }
+  ],
+  "legenda_dos_atributos": {
+    "Pronta entrega": "sim = em estoque em Brasília, pagamento na entrega (filtro: pronta_entrega)"
+  },
+  "empate": false
+}
+
+=== {"termo":"iphone","filtros":{"pronta_entrega":true}}
+{
+  "produtos": [
+    {
+      "codigo": "PRD-00004",
+      "nome": "iPhone 17 Pro Max",
+      "preco": "R$ 9.999,00",
+      "preco_cents": 999900,
+      "marca": "Apple",
+      "cor": "Laranja",
+      "disponivel": true,
+      "atributos": {
+        "Pronta entrega": "sim",
+        "Preço no cartão": "R$ 10.499,00"
+      }
+    }
+  ],
+  "legenda_dos_atributos": {
+    "Pronta entrega": "sim = em estoque em Brasília, pagamento na entrega (filtro: pronta_entrega)"
+  },
+  "empate": false
+}
+

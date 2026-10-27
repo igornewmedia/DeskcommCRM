@@ -294,9 +294,14 @@ export async function getLeadContext(
             .then((r) => r.rows.reverse())
         : Promise.resolve<HistoryRow[]>([]),
       db.query<{ desfecho: string }>(
+        // Desfecho fechado antes de "Reiniciar memória da IA" (migration 5004,
+        // `contacts.ia_memoria_desde`) não volta ao contexto.
         `select distinct d.desfecho from demandas d join demanda_conversas dc on dc.demanda_id=d.id and dc.organization_id=d.organization_id
-         where d.organization_id=$1 and dc.conversation_id=$2 and d.fechada_em is not null limit 5`,
-        [input.tenantId, conversationId]),
+         where d.organization_id=$1 and dc.conversation_id=$2 and d.fechada_em is not null
+           and d.fechada_em > coalesce(
+             (select ia_memoria_desde from contacts where organization_id=$1 and id=$3), '-infinity'::timestamptz)
+         limit 5`,
+        [input.tenantId, conversationId, input.leadId]),
     ]);
     return { conversationId, history, previousOutcomes };
   };

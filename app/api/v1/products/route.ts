@@ -33,6 +33,7 @@ import {
   PRODUTOS_POR_PAGINA,
 } from "@/lib/catalogo/busca-da-tela";
 import { moedaDaOrganizacao } from "@/lib/catalogo/moeda-da-org";
+import { resolverAtributos } from "@/lib/catalogo/atributos";
 import { controlaEstoquePadrao, modoDeEstoqueDaOrganizacao, produtoDisponivel } from "@/lib/catalogo/modo-de-estoque";
 import { COLUNAS_DO_PRODUTO, produtoCreateSchema, type Produto } from "@/lib/schemas/produtos";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -139,13 +140,28 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const { supabase, organizationId } = authz;
+  // Sem `atributos` no corpo, nada a consultar: o produto nasce com o objeto vazio.
+  const attrs =
+    parsed.data.atributos === undefined
+      ? ({ ok: true, atributos: {} } as const)
+      : await resolverAtributos(supabase, organizationId, parsed.data.atributos, "substituir");
+  if (!attrs.ok) {
+    return fail("validation_failed", t("Atributo inválido."), 422, { requestId, details: { atributos: attrs.erros } });
+  }
   // A moeda vem da organização, nunca do corpo — ver `moedaDaOrganizacao()`.
   const moeda = await moedaDaOrganizacao(supabase, organizationId);
   const controla_estoque =
     parsed.data.controla_estoque ?? controlaEstoquePadrao(await modoDeEstoqueDaOrganizacao(supabase, organizationId));
   const { data, error } = await supabase
     .from("catalog_products")
-    .insert({ ...parsed.data, controla_estoque, moeda, organization_id: organizationId, origem: "manual" })
+    .insert({
+      ...parsed.data,
+      atributos: attrs.atributos,
+      controla_estoque,
+      moeda,
+      organization_id: organizationId,
+      origem: "manual",
+    })
     .select(COLUNAS_DO_PRODUTO)
     .single();
 

@@ -32,6 +32,9 @@ import { z } from 'zod';
 import type pg from 'pg';
 
 import type { Queryable } from '../queue/queue';
+import { traduzir } from '@/lib/i18n/dicionario';
+import { normalizarIdioma } from '@/lib/i18n/idiomas';
+import { atribuirAoDestinatario, destinatarioDaPassagem } from './destinatario-da-passagem';
 
 export interface CaseIds {
   tenantId: string;
@@ -291,7 +294,41 @@ export async function openCase(
     // acionada quando ninguém foi avisado (#3097).
     return recusaDeCasoAberto();
   }
+  // O caso já existe: falhar o aviso ao destinatário não pode desfazer isso.
+  await avisarDestinatarioDoCaso(db, ids, input).catch(() => undefined);
   return { ok: true, caseId };
+}
+
+/**
+ * "Quem recebe as passagens" (migration 5003) também vale para o CASO: a
+ * conversa é atribuída à pessoa (`routing`, que não cala a IA — o caso espera a
+ * pessoa, mas o cliente segue atendido) e ela ganha um aviso próprio na Central,
+ * que é o que leva o push ao celular dela. Sem destinatário, nada muda: o caso
+ * segue só na tela de Casos, como sempre.
+ */
+async function avisarDestinatarioDoCaso(
+  db: pg.Pool,
+  ids: CaseIds,
+  input: { title: string; summary: string; blocker: string },
+): Promise<void> {
+  const destinatario = await destinatarioDaPassagem(db, ids);
+  if (!destinatario) return;
+  const { rows } = await db.query<{ locale: string | null }>('select locale from organizations where id = $1', [
+    ids.tenantId,
+  ]);
+  const idioma = normalizarIdioma(rows[0]?.locale ?? null);
+  await db.query(
+    `insert into agent_inbox_items (organization_id, kind, severity, title, body, ref_kind, ref_id, para_user_id)
+     values ($1, 'handoff', 'warn', $2, $3, 'conversation', $4, $5)`,
+    [
+      ids.tenantId,
+      `${traduzir('A IA abriu um caso para você', idioma)}: ${input.title}`.slice(0, 200),
+      `${input.summary}\n\n${traduzir('O que falta', idioma)}: ${input.blocker}`.slice(0, 2000),
+      ids.conversationId,
+      destinatario,
+    ],
+  );
+  await atribuirAoDestinatario(db, ids, destinatario, 'routing');
 }
 
 export type ProvideCaseUpdateResult = { ok: true } | { ok: false; error: { code: string; message: string } };

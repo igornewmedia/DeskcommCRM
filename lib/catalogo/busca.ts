@@ -96,6 +96,25 @@ export interface ProdutoBuscavel {
   categoria?: string | null;
   /** 9004: quem pede "256GB" acha o produto cujo nome não repete a capacidade. */
   capacidade?: string | null;
+  /** "iPhone 17 Pro Max laranja" acha o laranja. */
+  cor?: string | null;
+  /** Texto dos atributos personalizados marcados como pesquisáveis (migration 5002). */
+  extras?: string;
+}
+
+/** O texto em que a busca procura: um só, para a nota e para o filtro de número. */
+function textoDoAlvo(produto: ProdutoBuscavel): string {
+  return normalizar(
+    [
+      produto.nome,
+      produto.marca ?? "",
+      produto.categoria ?? "",
+      produto.capacidade ?? "",
+      produto.cor ?? "",
+      produto.extras ?? "",
+      produto.codigo,
+    ].join(" "),
+  );
 }
 
 /**
@@ -106,15 +125,7 @@ export interface ProdutoBuscavel {
  * eliminação, porque é o que impede o 128GB de aparecer para quem pediu 256GB.
  */
 export function pontuar(produto: ProdutoBuscavel, tokens: TokensDaBusca): number | null {
-  const alvo = normalizar(
-    [
-      produto.nome,
-      produto.marca ?? "",
-      produto.categoria ?? "",
-      produto.capacidade ?? "",
-      produto.codigo,
-    ].join(" "),
-  );
+  const alvo = textoDoAlvo(produto);
 
   // ── O FILTRO DURO ──────────────────────────────────────────────────────────
   for (const n of tokens.numeros) {
@@ -247,15 +258,7 @@ function numerosQueOCatalogoConhece<T extends ProdutoBuscavel>(
   if (numeros.length === 0) return conhecidos;
 
   for (const produto of produtos) {
-    const alvo = normalizar(
-      [
-        produto.nome,
-        produto.marca ?? "",
-        produto.categoria ?? "",
-        produto.capacidade ?? "",
-        produto.codigo,
-      ].join(" "),
-    );
+    const alvo = textoDoAlvo(produto);
     for (const n of numeros) {
       if (!conhecidos.has(n) && temONumero(alvo, n)) conhecidos.add(n);
     }

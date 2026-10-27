@@ -256,6 +256,7 @@ import {
 } from '@/lib/ai/decisao/manipulacao';
 import type { DependenciasDoPonto } from '@/lib/ai/decisao/ponto';
 import { perguntarUrgenciaAoJev, registrarUrgenciaDoJev } from '@/lib/ai/decisao/urgencia';
+import { feriadosDaOrganizacao } from './feriados-da-org';
 import { fusoDaOrganizacao } from './fuso-da-org';
 import { renderAgora } from '@/lib/tempo/agora';
 import { decidirElegibilidadeDaConversa } from '@/lib/ai/elegibilidade/consulta-pg';
@@ -2275,6 +2276,7 @@ async function executarTurnoDoAgente(
   // longe do ponto de uso, para não virar duas respostas para a mesma pergunta.
   // Nunca lança e nunca vem vazio (ver `fuso-da-org.ts`).
   const fusoDaOrg = await fusoDaOrganizacao(pool, tenantId, runLog);
+  const feriadosDaOrg = await feriadosDaOrganizacao(pool, tenantId);
 
   // F4-06 (acceptance 2): lead em handoff humano → NO-OP no INÍCIO do turno, antes de
   // qualquer chamada de modelo/CRM. O bot silenciou (bot_silenced_until='infinity', cache
@@ -3306,7 +3308,9 @@ async function executarTurnoDoAgente(
   // avança quando o envio de fato sai pro canal (send_message + send_template, bolhas
   // incluídas), nunca em veto de gate. Checar `seq` antes de tentar o próximo envio
   // barra o modelo sem gastar uma chamada de before-send à toa.
-  const maxSendsPerTurn = deps.knobs.maxSendsPerTurn ?? DEFAULT_MAX_SENDS_PER_TURN;
+  // O teto do AGENTE vence o da instalação; vazio = o da instalação (comportamento de sempre).
+  const maxSendsPerTurn =
+    agentConfig?.maxSendsPerTurn ?? deps.knobs.maxSendsPerTurn ?? DEFAULT_MAX_SENDS_PER_TURN;
   // F3-11: estágio que o MODELO confirmou via update_lead_state neste turno (a máquina
   // F2-10 é a única porta). Comparado com a sugestão do classificador no fim → divergência.
   let confirmedStage: LeadStage | null = null;
@@ -5286,7 +5290,7 @@ async function executarTurnoDoAgente(
     // turnos conversacionais (inbound, follow-up e resposta a caso), então um
     // ponto só cobre os três — e alcança de carona a chamada de fechamento, que
     // reusa `openingTextOnly` e é onde nasce o `prazo` ISO da declaração.
-    const agoraBlock = renderAgora(clock(), fusoDaOrg);
+    const agoraBlock = renderAgora(clock(), fusoDaOrg, feriadosDaOrg);
     const openingSuffixes = [
       agoraBlock,
       matchedSkillsBlock,

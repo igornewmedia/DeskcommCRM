@@ -7,6 +7,14 @@ vi.mock("@/lib/api/client", () => ({ apiClient: { get: h.get, post: h.post, dele
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (s: string) => s }));
 vi.mock("./ChannelAiAccess", () => ({ ChannelAiAccess: () => <div>IA pausada</div> }));
+vi.mock("@/hooks/channels/usePacingKnobs", () => ({
+  usePacingKnobs: () => ({ data: { items: [{ channel_session: { id: "c" } }] } }),
+}));
+vi.mock("./AntiBanSheet", () => ({
+  AntiBanSheet: ({ item }: { item: { channel_session: { id: string } } | null }) => (
+    <div role="dialog">janela de resposta de {item?.channel_session.id ?? "nenhum"}</div>
+  ),
+}));
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -197,4 +205,26 @@ it("ressincroniza o webhook do canal social pela origem atual, sem desconectar",
       account_id: "a",
     }),
   );
+});
+it("conta conectada abre a Proteção de envio do canal (janela de resposta do Instagram)", async () => {
+  h.get.mockResolvedValue({
+    data: {
+      configured: true,
+      label: "Partner",
+      networks: [{ id: "instagram", label: "Instagram" }],
+      accounts: [
+        {
+          id: "a",
+          platform: "instagram",
+          username: "brand",
+          active: true,
+          inbox_supported: true,
+          channel: { id: "c", status: "WORKING", metadata: {} },
+        },
+      ],
+    },
+  });
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Proteção de envio" }));
+  expect((await screen.findByRole("dialog")).textContent).toBe("janela de resposta de c");
 });

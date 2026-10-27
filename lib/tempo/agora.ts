@@ -42,6 +42,7 @@
 
 import { partesNoFuso, diaDaSemanaLocal, offsetEmMinutos } from "@/lib/agenda/fuso";
 import { FUSO_PADRAO, fusoValido } from "@/lib/tempo/fusos";
+import { linhasDeFeriado, type ConfigDeFeriados } from "@/lib/tempo/feriados";
 
 /**
  * Domingo = 0, a mesma régua de `diaDaSemanaLocal` e do `dow` da jornada.
@@ -74,7 +75,7 @@ const doisDigitos = (n: number): string => String(n).padStart(2, "0");
  *
  * Fuso ausente, vazio ou inválido cai em {@link FUSO_PADRAO} — nunca lança.
  */
-export function renderAgora(agora: Date, fuso: string): string {
+export function renderAgora(agora: Date, fuso: string, feriados?: ConfigDeFeriados): string {
   const fusoEmVigor = fusoValido(fuso) ? fuso : FUSO_PADRAO;
   const p = partesNoFuso(agora, fusoEmVigor);
   const diaDaSemana = DIAS_DA_SEMANA[diaDaSemanaLocal(agora, fusoEmVigor)] ?? "";
@@ -84,6 +85,8 @@ export function renderAgora(agora: Date, fuso: string): string {
     `${diaDaSemana}, ${doisDigitos(p.dia)}/${doisDigitos(p.mes)}/${p.ano}, ` +
       `${doisDigitos(p.hora)}:${doisDigitos(p.minuto)} (${fusoEmVigor})`,
     `instante_absoluto: ${agora.toISOString()}`,
+    // Feriados (fork): só com a opção ligada na organização; desligada, nenhuma linha.
+    ...(feriados ? linhasDeFeriado(agora, fusoEmVigor, feriados) : []),
     "É daqui que sai toda data: o que a pessoa disser em palavras (\"amanhã\", \"quinta\", " +
       "\"semana que vem\") você resolve a partir desta data, nunca de memória. " +
       "Ferramenta que pede um instante recebe o formato de `instante_absoluto`; " +

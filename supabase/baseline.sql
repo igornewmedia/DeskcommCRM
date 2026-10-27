@@ -62161,6 +62161,278 @@ alter table public.catalog_products
 comment on column public.catalog_products.capacidade is
   'Capacidade do produto (opcional, texto livre: 128GB, 1TB, 500ml). Migration 9004.';
 
+-- ---- agente: máximo de mensagens por resposta (migration 5001) ----
+alter table public.ai_agent_versions add column if not exists max_sends_per_turn smallint;
+
+alter table public.ai_agent_versions drop constraint if exists ai_agent_versions_max_sends_per_turn_faixa;
+alter table public.ai_agent_versions
+  add constraint ai_agent_versions_max_sends_per_turn_faixa
+  check (max_sends_per_turn is null or max_sends_per_turn between 1 and 10);
+
+comment on column public.ai_agent_versions.max_sends_per_turn is
+  'Máximo de mensagens enviadas ao cliente por resposta do agente (1 a 10). NULL = MAX_SENDS_PER_TURN da instalação. O que passa do teto vai junto na última mensagem. Migration 5001.';
+
+-- A trava da versão publicada cobre a coluna nova (mesmo motivo da 0503).
+create or replace function fn_ai_agent_version_content_immutable() returns trigger
+-- search_path fixo na PRÓPRIA definição: um create or replace sem a cláusula
+-- apaga o alter function ... set search_path da 0521 (invariante
+-- tests/invariants/avisos-do-security-advisor.test.ts).
+language plpgsql set search_path = '' as $fn$
+begin
+  if old.status <> 'draft' and (
+       new.system_prompt          is distinct from old.system_prompt
+    or new.provider               is distinct from old.provider
+    or new.model                  is distinct from old.model
+    or new.credential_id          is distinct from old.credential_id
+    or new.tool_ids               is distinct from old.tool_ids
+    or new.trigger_config         is distinct from old.trigger_config
+    or new.channel_session_id     is distinct from old.channel_session_id
+    or new.max_steps              is distinct from old.max_steps
+    or new.token_budget           is distinct from old.token_budget
+    or new.cost_budget_cents      is distinct from old.cost_budget_cents
+    or new.history_message_window is distinct from old.history_message_window
+    or new.history_token_window   is distinct from old.history_token_window
+    or new.handoff_keywords       is distinct from old.handoff_keywords
+    or new.handoff_tool_enabled   is distinct from old.handoff_tool_enabled
+    or new.handoff_legal_enabled  is distinct from old.handoff_legal_enabled
+    or new.followup               is distinct from old.followup
+    or new.multimodal_input       is distinct from old.multimodal_input
+    or new.video_frames_enabled   is distinct from old.video_frames_enabled
+    or new.split_messages         is distinct from old.split_messages
+    or new.split_max_chars        is distinct from old.split_max_chars
+    or new.cases_enabled          is distinct from old.cases_enabled
+    or new.operator_enabled       is distinct from old.operator_enabled
+    or new.operator_model         is distinct from old.operator_model
+    or new.operator_tool_ids      is distinct from old.operator_tool_ids
+    or new.pipeline_ids           is distinct from old.pipeline_ids
+    or new.knowledge_source_ids   is distinct from old.knowledge_source_ids
+    or new.proposal_ai_draft_enabled is distinct from old.proposal_ai_draft_enabled
+    or new.inbound_debounce_ms    is distinct from old.inbound_debounce_ms
+    or new.max_sends_per_turn     is distinct from old.max_sends_per_turn
+    or new.version_number         is distinct from old.version_number
+    or new.agent_id               is distinct from old.agent_id
+    or new.organization_id        is distinct from old.organization_id
+  ) then
+    raise exception 'ai_agent_versions % é imutável (status=%): mudança de conteúdo = versão draft nova; rollback = revert (clona + publica)',
+      old.id, old.status;
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_ai_agent_versions_content_immutable on public.ai_agent_versions;
+create trigger trg_ai_agent_versions_content_immutable
+  before update on public.ai_agent_versions
+  for each row execute function fn_ai_agent_version_content_immutable();
+
+notify pgrst, 'reload schema';
+
+-- ---- catálogo: atributos personalizados de produto (migration 5002) ----
+alter table public.catalog_products add column if not exists atributos jsonb not null default '{}'::jsonb;
+
+-- Lixo de clone (array, número) vira objeto vazio antes da constraint.
+update public.catalog_products set atributos = '{}'::jsonb where jsonb_typeof(atributos) <> 'object';
+
+alter table public.catalog_products drop constraint if exists catalog_products_atributos_objeto;
+alter table public.catalog_products
+  add constraint catalog_products_atributos_objeto check (jsonb_typeof(atributos) = 'object');
+
+comment on column public.catalog_products.atributos is
+  'Valores dos atributos personalizados da organização (chave do atributo -> valor), validados contra catalog_product_attributes na escrita. Migration 5002.';
+
+create table if not exists public.catalog_product_attributes (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  chave text not null,
+  rotulo text not null,
+  -- Vocabulário fechado com CHECK: a tabela nasce aqui, sem linha legada.
+  tipo text not null,
+  descricao_ia text,
+  visivel_ia boolean not null default true,
+  pesquisavel boolean not null default false,
+  ordem integer not null default 0,
+  opcoes text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint catalog_product_attributes_chave_slug check (chave ~ '^[a-z][a-z0-9_]{0,39}$'),
+  constraint catalog_product_attributes_rotulo_tamanho check (char_length(btrim(rotulo)) between 1 and 60),
+  constraint catalog_product_attributes_tipo check (tipo in ('texto', 'numero', 'booleano', 'moeda', 'lista')),
+  constraint catalog_product_attributes_descricao_tamanho check (descricao_ia is null or char_length(descricao_ia) <= 300),
+  constraint catalog_product_attributes_lista_tem_opcao check (tipo <> 'lista' or cardinality(opcoes) > 0),
+  constraint catalog_product_attributes_org_chave_key unique (organization_id, chave)
+);
+
+create index if not exists catalog_product_attributes_org_ordem_idx
+  on public.catalog_product_attributes (organization_id, ordem);
+
+alter table public.catalog_product_attributes enable row level security;
+
+drop policy if exists catalog_product_attributes_select on public.catalog_product_attributes;
+create policy catalog_product_attributes_select on public.catalog_product_attributes
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or (select public.fn_is_platform_admin())
+  );
+
+drop policy if exists catalog_product_attributes_insert on public.catalog_product_attributes;
+create policy catalog_product_attributes_insert on public.catalog_product_attributes
+  for insert with check (
+    (select public.fn_is_platform_admin_full())
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+drop policy if exists catalog_product_attributes_write on public.catalog_product_attributes;
+create policy catalog_product_attributes_write on public.catalog_product_attributes
+  for update using (
+    (select public.fn_is_platform_admin_full())
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  )
+  with check (
+    (select public.fn_is_platform_admin_full())
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+drop policy if exists catalog_product_attributes_delete on public.catalog_product_attributes;
+create policy catalog_product_attributes_delete on public.catalog_product_attributes
+  for delete using (
+    (select public.fn_is_platform_admin_full())
+    or ((organization_id in (select public.fn_user_org_ids()))
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+
+revoke all on public.catalog_product_attributes from anon;
+grant select, insert, update, delete on public.catalog_product_attributes to authenticated;
+grant all on public.catalog_product_attributes to service_role;
+
+drop trigger if exists trg_catalog_product_attributes_updated_at on public.catalog_product_attributes;
+create trigger trg_catalog_product_attributes_updated_at
+  before update on public.catalog_product_attributes
+  for each row execute function public.fn_set_updated_at();
+
+comment on table public.catalog_product_attributes is
+  'Atributos personalizados de produto definidos por organização (pronta entrega, preço no cartão…). A IA lê os visíveis na busca do catálogo. Teto de 30 por organização, cobrado na rota. Migration 5002.';
+
+notify pgrst, 'reload schema';
+
+-- ---- agente: quem recebe as passagens (migration 5003) ----
+-- Sem FK para auth.users de propósito: a versão publicada é imutável, e um
+-- `on delete set null` falharia na trava abaixo quando a pessoa fosse apagada.
+-- O motor confere a cada passagem se ela segue membro agent+ da organização.
+alter table public.ai_agent_versions add column if not exists handoff_target_user_id uuid;
+
+comment on column public.ai_agent_versions.handoff_target_user_id is
+  'Quem recebe as passagens e os casos abertos por este agente: a conversa é atribuída a essa pessoa e o aviso da Central nasce com dono (para_user_id). NULL = a fila da equipe, como sempre. Migration 5003.';
+
+-- A trava da versão publicada cobre a coluna nova.
+create or replace function fn_ai_agent_version_content_immutable() returns trigger
+-- search_path fixo na PRÓPRIA definição: um create or replace sem a cláusula
+-- apaga o alter function ... set search_path da 0521 (invariante
+-- tests/invariants/avisos-do-security-advisor.test.ts).
+language plpgsql set search_path = '' as $fn$
+begin
+  if old.status <> 'draft' and (
+       new.system_prompt          is distinct from old.system_prompt
+    or new.provider               is distinct from old.provider
+    or new.model                  is distinct from old.model
+    or new.credential_id          is distinct from old.credential_id
+    or new.tool_ids               is distinct from old.tool_ids
+    or new.trigger_config         is distinct from old.trigger_config
+    or new.channel_session_id     is distinct from old.channel_session_id
+    or new.max_steps              is distinct from old.max_steps
+    or new.token_budget           is distinct from old.token_budget
+    or new.cost_budget_cents      is distinct from old.cost_budget_cents
+    or new.history_message_window is distinct from old.history_message_window
+    or new.history_token_window   is distinct from old.history_token_window
+    or new.handoff_keywords       is distinct from old.handoff_keywords
+    or new.handoff_tool_enabled   is distinct from old.handoff_tool_enabled
+    or new.handoff_legal_enabled  is distinct from old.handoff_legal_enabled
+    or new.followup               is distinct from old.followup
+    or new.multimodal_input       is distinct from old.multimodal_input
+    or new.video_frames_enabled   is distinct from old.video_frames_enabled
+    or new.split_messages         is distinct from old.split_messages
+    or new.split_max_chars        is distinct from old.split_max_chars
+    or new.cases_enabled          is distinct from old.cases_enabled
+    or new.operator_enabled       is distinct from old.operator_enabled
+    or new.operator_model         is distinct from old.operator_model
+    or new.operator_tool_ids      is distinct from old.operator_tool_ids
+    or new.pipeline_ids           is distinct from old.pipeline_ids
+    or new.knowledge_source_ids   is distinct from old.knowledge_source_ids
+    or new.proposal_ai_draft_enabled is distinct from old.proposal_ai_draft_enabled
+    or new.inbound_debounce_ms    is distinct from old.inbound_debounce_ms
+    or new.max_sends_per_turn     is distinct from old.max_sends_per_turn
+    or new.handoff_target_user_id is distinct from old.handoff_target_user_id
+    or new.version_number         is distinct from old.version_number
+    or new.agent_id               is distinct from old.agent_id
+    or new.organization_id        is distinct from old.organization_id
+  ) then
+    raise exception 'ai_agent_versions % é imutável (status=%): mudança de conteúdo = versão draft nova; rollback = revert (clona + publica)',
+      old.id, old.status;
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists trg_ai_agent_versions_content_immutable on public.ai_agent_versions;
+create trigger trg_ai_agent_versions_content_immutable
+  before update on public.ai_agent_versions
+  for each row execute function fn_ai_agent_version_content_immutable();
+
+notify pgrst, 'reload schema';
+
+-- ---- IA: reiniciar a memória de um contato (migration 5004) ----
+alter table public.contacts add column if not exists ia_memoria_desde timestamptz;
+
+comment on column public.contacts.ia_memoria_desde is
+  'Quando a memória da IA deste contato foi reiniciada (ação "Reiniciar memória da IA"). Desfechos de atendimento fechados antes disto não entram no contexto do agente. NULL = nunca reiniciada. Migration 5004.';
+
+-- Uma transação só: checkpoint (com o resumo acumulado), notas do lead e
+-- estágio do funil do agente. As mensagens NÃO são apagadas — saem do contexto
+-- porque o atendimento é fechado antes (fn_service_status) e o histórico do
+-- turno é o do atendimento atual. Sem seletor além de organização + contato,
+-- e só a service role chama (a rota cobra manager+ antes).
+create or replace function public.fn_reiniciar_memoria_da_ia(p_org uuid, p_contact uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_checkpoints integer;
+  v_notas integer;
+  v_estagio text;
+begin
+  if not exists (select 1 from public.contacts where id = p_contact and organization_id = p_org) then
+    raise exception 'contato_nao_encontrado' using errcode = 'P0002';
+  end if;
+
+  delete from public.lead_checkpoints where organization_id = p_org and contact_id = p_contact;
+  get diagnostics v_checkpoints = row_count;
+
+  delete from public.lead_notes where organization_id = p_org and contact_id = p_contact;
+  get diagnostics v_notas = row_count;
+
+  select stage into v_estagio from public.lead_state where organization_id = p_org and contact_id = p_contact;
+  if v_estagio is not null and v_estagio <> 'new' then
+    insert into public.lead_state_transitions (organization_id, contact_id, from_stage, to_stage, reason)
+    values (p_org, p_contact, v_estagio, 'new', 'memoria_da_ia_reiniciada');
+  end if;
+  update public.lead_state
+     set stage = 'new', qualification = '{}'::jsonb, next_action = null, updated_at = now()
+   where organization_id = p_org and contact_id = p_contact;
+
+  update public.contacts set ia_memoria_desde = now() where id = p_contact and organization_id = p_org;
+
+  return jsonb_build_object('checkpoints', v_checkpoints, 'notas', v_notas, 'estagio_anterior', v_estagio);
+end;
+$$;
+
+revoke execute on function public.fn_reiniciar_memoria_da_ia(uuid, uuid) from public, anon, authenticated;
+grant  execute on function public.fn_reiniciar_memoria_da_ia(uuid, uuid) to service_role;
+
+notify pgrst, 'reload schema';
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria

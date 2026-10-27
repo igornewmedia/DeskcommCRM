@@ -44,6 +44,7 @@ import { rotuloDoEstadoDoCanal } from "@/lib/channels/estado";
 import { bloqueioDePublicacao } from "@/lib/ai/agents/bloqueio-de-publicacao";
 import { mesmoRascunho } from "@/lib/ai/agents/mesmo-rascunho";
 import { ToolPicker } from "./ToolPicker";
+import { QuemRecebeAsPassagens } from "./QuemRecebeAsPassagens";
 import { FerramentasHttp } from "@/components/ai/ferramentas-http/FerramentasHttp";
 import { ehToolIdHttp } from "@/lib/ferramentas-http/ids";
 import { TriggerEditor, type TriggerValue } from "./TriggerEditor";
@@ -202,6 +203,8 @@ interface FormState {
   split_max_chars: number;
   /** Janela de rajada (ms) do agente. `null` = usa a env da instalação. */
   inbound_debounce_ms: number | null;
+  max_sends_per_turn: number | null;
+  handoff_target_user_id: string | null;
   followup: FollowupValue;
   // Papel OPERADOR (spec 16 §3.2) — o que mexe no sistema depois da conversa.
   operator_enabled: boolean;
@@ -312,6 +315,8 @@ export function buildState(args: {
     split_messages: version?.split_messages ?? false,
     split_max_chars: version?.split_max_chars ?? 600,
     inbound_debounce_ms: version?.inbound_debounce_ms ?? null,
+    max_sends_per_turn: version?.max_sends_per_turn ?? null,
+    handoff_target_user_id: version?.handoff_target_user_id ?? null,
     followup: version?.followup
       ? {
           ...DEFAULT_FOLLOWUP,
@@ -377,6 +382,8 @@ function toVersionPayload(s: FormState) {
     split_messages: s.split_messages,
     split_max_chars: s.split_max_chars,
     inbound_debounce_ms: s.inbound_debounce_ms,
+    max_sends_per_turn: s.max_sends_per_turn,
+    handoff_target_user_id: s.handoff_target_user_id,
     followup: s.followup,
     operator_enabled: s.operator_enabled,
     // "" (não escolheu) → null (herda o do Conversador). São o mesmo conceito em
@@ -1240,6 +1247,32 @@ export function AgentForm(props: Props) {
                 ) : null}
               </div>
             ) : null}
+            <div className="space-y-1">
+              <Label htmlFor="max_sends_per_turn">{t("Máximo de mensagens por resposta (1–10)")}</Label>
+              <Input
+                id="max_sends_per_turn"
+                type="number"
+                min={1}
+                max={10}
+                step={1}
+                placeholder={t("Vazio = padrão da instalação")}
+                value={form.max_sends_per_turn === null ? "" : String(form.max_sends_per_turn)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Vazio = o MAX_SENDS_PER_TURN da instalação (campo null).
+                  patch({
+                    max_sends_per_turn:
+                      raw === "" ? null : Math.round(Math.max(1, Math.min(10, Number(raw)))),
+                  });
+                }}
+                disabled={disabled}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "Quantas mensagens o agente pode mandar numa mesma resposta. As partes que passarem do limite vão juntas na última mensagem. Vazio usa o padrão da instalação.",
+                )}
+              </p>
+            </div>
           </Card>
 
           {/* Capacidades */}
@@ -1347,6 +1380,11 @@ export function AgentForm(props: Props) {
             <HandoffKeywordsInput
               value={form.handoff_keywords}
               onChange={(v) => patch({ handoff_keywords: v })}
+              disabled={disabled}
+            />
+            <QuemRecebeAsPassagens
+              value={form.handoff_target_user_id}
+              onChange={(v) => patch({ handoff_target_user_id: v })}
               disabled={disabled}
             />
           </Card>

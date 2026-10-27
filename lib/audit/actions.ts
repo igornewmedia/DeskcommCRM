@@ -179,6 +179,8 @@ export const AUDIT_ACTIONS = [
   "phone_number.updated",
   "ai.handoff_triggered",
   "ai.reactivated_by_agent",
+  // "Reiniciar memória da IA" de um contato (migration 5004).
+  "ai.memory_reset",
   "conversation.usable_for_rag_toggled",
   "rag.conversations_batch_run",
   "lgpd.redact_received",
@@ -801,6 +803,9 @@ export const AUDIT_ACTIONS = [
   "catalog_trade_in_device.created",
   "catalog_trade_in_device.updated",
   "catalog_trade_in_device.deleted",
+  "catalog_product_attribute.created",
+  "catalog_product_attribute.updated",
+  "catalog_product_attribute.deleted",
   "catalog_product.imported",
   // As fotos do produto (migration 0390): subir uma, e reordenar/remover.
   "catalog_product.photo_added",
@@ -1230,6 +1235,8 @@ export const AUDIT_ACTIONS = [
   // Como a IA da empresa trata o estoque (`organizations.settings.catalogo.modo_estoque`),
   // gravado pelo cartão do topo de /app/products. Muda o que a IA oferece como disponível.
   "settings.catalog_stock_mode_updated",
+  // Feriados da empresa no bloco ## Agora do agente (fork).
+  "settings.holidays_updated",
 
   // Planos de tarefa (#1752): a lista `settings.task_plans` mudou pela rota
   // `settings/task-plans` — mesma família de `campaign.settings_updated`.

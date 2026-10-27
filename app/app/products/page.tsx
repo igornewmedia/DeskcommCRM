@@ -13,6 +13,7 @@ import {
   ultimaPagina,
 } from "@/lib/catalogo/busca-da-tela";
 import { BUCKET_DAS_FOTOS, fotoPertenceAoProduto } from "@/lib/catalogo/fotos";
+import { atributosDaOrganizacao } from "@/lib/catalogo/atributos";
 import { modoDeEstoqueDaOrganizacao } from "@/lib/catalogo/modo-de-estoque";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { COLUNAS_DO_PRODUTO, type Produto } from "@/lib/schemas/produtos";
@@ -124,6 +125,7 @@ export default async function ProdutosPage({
       urlsDasFotos={urlsDasFotos}
       podeEditar={podeEditar}
       modoEstoque={await modoDeEstoqueDaOrganizacao(supabase, activeOrg.orgId)}
+      atributos={await atributosDaOrganizacao(supabase, activeOrg.orgId)}
       textos={{
         titulo: t("Produtos"),
         subtitulo: t(

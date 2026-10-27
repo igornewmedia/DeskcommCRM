@@ -12,9 +12,11 @@
 import { z } from "zod";
 
 import type { McpToolDefinition } from "../types";
+import { atributosDaOrganizacao } from "@/lib/catalogo/atributos";
 import { buscarComRelaxamento } from "@/lib/catalogo/busca";
 import { modoDeEstoqueDaOrganizacao, produtoDisponivel } from "@/lib/catalogo/modo-de-estoque";
 import { formatCents } from "@/lib/money";
+import { casaFiltros, formatarValor, textoPesquisavel } from "@/lib/schemas/atributos-de-produto";
 
 // ---------------------------------------------------------------------------
 // pedidos de um cliente
@@ -98,6 +100,13 @@ const produtosInputShape = {
     .describe("o que a pessoa disse — pode ser o nome, a marca, o código ou tudo junto"),
   limite: z.number().int().min(1).max(20).optional().default(8),
   somente_disponiveis: z.boolean().optional().default(true),
+  filtros: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional()
+    .describe(
+      "filtro exato por atributo da loja, pela chave (ex.: { \"pronta_entrega\": true } ou { \"versao\": \"Anatel\" }). " +
+        "Use só chaves que já apareceram em `legenda_dos_atributos` de uma busca anterior.",
+    ),
 };
 
 /**
@@ -199,6 +208,8 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
     "invente um valor que você lembra. " +
     "Produto com `fotos` tem foto cadastrada: ao apresentá-lo, passe o `codigo` dele em " +
     "`produto_codigo` no send_message, e a foto vai junto com o texto. " +
+    "Produto pode trazer `atributos` da loja (rótulo → valor); o que cada um significa está em " +
+    "`legenda_dos_atributos`, e você pode filtrar por eles com `filtros`. " +
     "Disponibilidade é só o campo `disponivel`: nunca diga ao cliente quantas unidades há em " +
     "estoque nem crie escassez ('últimas unidades').",
   inputSchema: produtosInputShape,
@@ -253,7 +264,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       const { data: lote, error, count } = await ctx.supabase
         .from("catalog_products")
         .select(
-          "id, codigo, nome, descricao, marca, categoria, cor, capacidade, preco_cents, moeda, controla_estoque, quantidade, ativo, fotos",
+          "id, codigo, nome, descricao, marca, categoria, cor, capacidade, preco_cents, moeda, controla_estoque, quantidade, ativo, fotos, atributos",
           { count: "exact" },
         )
         .eq("organization_id", ctx.organizationId)
@@ -300,9 +311,22 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
       quantidade: number;
       ativo: boolean;
       fotos: string[] | null;
+      atributos: Record<string, unknown> | null;
+      extras?: string;
     };
 
-    const { achados, ignorados } = buscarComRelaxamento((data ?? []) as Linha[], input.termo);
+    // Atributos personalizados (migration 5002): os pesquisáveis entram na nota,
+    // e `filtros` corta antes da busca. Chave de filtro que a loja não tem é
+    // ignorada e dita ao modelo — filtrar por ela zeraria a lista em silêncio.
+    const defs = await atributosDaOrganizacao(ctx.supabase, ctx.organizationId);
+    const chavesDaLoja = new Set(defs.map((d) => d.chave));
+    const filtros = Object.fromEntries(Object.entries(input.filtros ?? {}).filter(([k]) => chavesDaLoja.has(k)));
+    const filtrosIgnorados = Object.keys(input.filtros ?? {}).filter((k) => !chavesDaLoja.has(k));
+    const candidatos = (data as Linha[])
+      .filter((l) => casaFiltros(l.atributos, filtros))
+      .map((l) => ({ ...l, extras: textoPesquisavel(defs, l.atributos) }));
+
+    const { achados, ignorados } = buscarComRelaxamento(candidatos, input.termo);
 
     // A régua é a da empresa (`lib/catalogo/modo-de-estoque.ts`), lida a cada
     // busca: sem controle de estoque, todo ativo está disponível e a quantidade
@@ -356,10 +380,34 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
     // casa o Pro e o Pro Max igualmente, e a diferença entre eles é o preço.
     const empate = topo.length > 1 && topo[0]!.nota === topo[1]!.nota;
 
-    const mensagem = avisosDaBusca({ empate, ignorados });
+    const avisoDeFiltro =
+      filtrosIgnorados.length > 0
+        ? `estes filtros não existem nesta loja e foram ignorados: ${filtrosIgnorados.join(", ")}.`
+        : "";
+    const mensagem = [avisosDaBusca({ empate, ignorados }), avisoDeFiltro].filter(Boolean).join(" ");
+
+    // O que a IA lê de cada atributo: rótulo → valor formatado, só os visíveis.
+    // O significado vai UMA vez em `legenda_dos_atributos`, não repetido por produto.
+    const visiveis = defs.filter((d) => d.visivel_ia);
+    const atributosDoProduto = (p: Linha) => {
+      const v = (p.atributos ?? {}) as Record<string, unknown>;
+      const saida: Record<string, string> = {};
+      for (const d of visiveis) {
+        const texto = formatarValor(d, v[d.chave], p.moeda);
+        if (texto !== null) saida[d.rotulo] = texto;
+      }
+      return saida;
+    };
+    const produtos = topo.map(({ produto }) => ({ produto, atributos: atributosDoProduto(produto) }));
+    const usados = new Set(produtos.flatMap((p) => Object.keys(p.atributos)));
+    const legenda = Object.fromEntries(
+      visiveis
+        .filter((d) => usados.has(d.rotulo) && d.descricao_ia)
+        .map((d) => [d.rotulo, `${d.descricao_ia} (filtro: ${d.chave})`]),
+    );
 
     return {
-      produtos: topo.map(({ produto }) => ({
+      produtos: produtos.map(({ produto, atributos }) => ({
         codigo: produto.codigo,
         nome: produto.nome,
         preco: formatCents(produto.preco_cents, produto.moeda),
@@ -374,7 +422,9 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
         // assinada expira. Quem manda a foto é o `send_message` do agente, com
         // `produto_codigo` — ele acha as fotos pelo código (migration 0390).
         ...(produto.fotos && produto.fotos.length > 0 ? { fotos: produto.fotos.length } : {}),
+        ...(Object.keys(atributos).length > 0 ? { atributos } : {}),
       })),
+      ...(Object.keys(legenda).length > 0 ? { legenda_dos_atributos: legenda } : {}),
       empate,
       // Relaxamento é o irmão do empate: nos dois a busca sabe que a resposta
       // NÃO é exatamente o que foi pedido, e nos dois quem decide é a pessoa.

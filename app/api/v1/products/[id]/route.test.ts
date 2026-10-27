@@ -25,6 +25,12 @@ const PRODUTO_ID = "55555555-5555-4555-8555-555555555555";
 let atualizado: Record<string, unknown> | null;
 let filtros: Record<string, unknown>;
 let linhaExiste: boolean;
+let atributosAtuais: Record<string, unknown>;
+
+const DEFS = [
+  { id: "a1", chave: "pronta_entrega", rotulo: "Pronta entrega", tipo: "booleano", descricao_ia: null, visivel_ia: true, pesquisavel: false, ordem: 0, opcoes: [] },
+  { id: "a2", chave: "preco_cartao_cents", rotulo: "Preço no cartão", tipo: "moeda", descricao_ia: null, visivel_ia: true, pesquisavel: false, ordem: 1, opcoes: [] },
+];
 
 function supabaseFalso() {
   const cadeia = (resultado: () => unknown) => {
@@ -38,8 +44,19 @@ function supabaseFalso() {
     };
     return c;
   };
+  const lista = (dados: unknown[]) => {
+    const q = {
+      select: () => q,
+      eq: () => q,
+      order: () => q,
+      maybeSingle: async () => ({ data: dados[0] ?? null, error: null }),
+      then: (ok: (r: unknown) => unknown) => ok({ data: dados, error: null }),
+    };
+    return q;
+  };
   return {
-    from: () => ({
+    from: (tabela: string) => tabela === "catalog_product_attributes" ? lista(DEFS) : ({
+      select: () => lista([{ atributos: atributosAtuais }]),
       update: (dados: Record<string, unknown>) => {
         atualizado = dados;
         return cadeia(() => ({ id: PRODUTO_ID, ...dados }));
@@ -64,6 +81,7 @@ beforeEach(() => {
   atualizado = null;
   filtros = {};
   linhaExiste = true;
+  atributosAtuais = { pronta_entrega: true, preco_cartao_cents: 785100 };
   vi.mocked(tetoDeEscritaDoToken).mockResolvedValue(null);
   vi.mocked(resolveAuthDual).mockResolvedValue({
     ok: true,
@@ -131,6 +149,46 @@ describe("PATCH /api/v1/products/:id — muda só o que veio", () => {
     const r = await PATCH(pedido("PATCH", { preco_cents: 799000 }), ctx);
     expect(r.status).toBe(200);
     expect(atualizado).toEqual({ preco_cents: 799000 });
+  });
+});
+
+describe("atributos personalizados (migration 5002)", () => {
+  it("PATCH de uma chave preserva as outras", async () => {
+    const { PATCH } = await import("./route");
+    const r = await PATCH(pedido("PATCH", { atributos: { preco_cartao_cents: 799000 } }), ctx);
+    expect(r.status).toBe(200);
+    expect(atualizado).toEqual({ atributos: { pronta_entrega: true, preco_cartao_cents: 799000 } });
+  });
+
+  it("PATCH com null apaga só aquela chave", async () => {
+    const { PATCH } = await import("./route");
+    await PATCH(pedido("PATCH", { atributos: { pronta_entrega: null } }), ctx);
+    expect(atualizado).toEqual({ atributos: { preco_cartao_cents: 785100 } });
+  });
+
+  it("PUT substitui o objeto inteiro", async () => {
+    const { PUT } = await import("./route");
+    await PUT(pedido("PUT", { nome: "iPhone 17", preco_cents: 1, atributos: { pronta_entrega: false } }), ctx);
+    expect(atualizado?.atributos).toEqual({ pronta_entrega: false });
+  });
+
+  it("PUT sem atributos zera o objeto", async () => {
+    const { PUT } = await import("./route");
+    await PUT(pedido("PUT", { nome: "iPhone 17", preco_cents: 1 }), ctx);
+    expect(atualizado?.atributos).toEqual({});
+  });
+
+  it("valor de tipo errado é 422 e não grava", async () => {
+    const { PATCH } = await import("./route");
+    const r = await PATCH(pedido("PATCH", { atributos: { pronta_entrega: "sim" } }), ctx);
+    expect(r.status).toBe(422);
+    expect(atualizado).toBeNull();
+  });
+
+  it("chave que a organização não definiu é 422", async () => {
+    const { PATCH } = await import("./route");
+    const r = await PATCH(pedido("PATCH", { atributos: { outra_org: 1 } }), ctx);
+    expect(r.status).toBe(422);
   });
 });
 

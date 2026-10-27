@@ -61,14 +61,36 @@ export const PRIMEIRO_ANO_DA_CONSCIENCIA_NEGRA = 2024;
  * Corpo de Deus (Páscoa + 60). Doze até 2023, treze de 2024 em diante.
  */
 export function feriadosDoBrasilDoAno(ano: number): string[] {
+  return feriadosNomeadosDoBrasilDoAno(ano).map((f) => f.data);
+}
+
+/** Os nomes de `FIXED_DATES`, na mesma ordem. */
+const NOMES_DOS_FIXOS = [
+  "Confraternização Universal",
+  "Tiradentes",
+  "Dia do Trabalho",
+  "Independência",
+  "Nossa Senhora Aparecida",
+  "Finados",
+  "Proclamação da República",
+  "Natal",
+];
+
+/**
+ * Os mesmos feriados de `feriadosDoBrasilDoAno`, com o nome — para o bloco
+ * `## Agora` do agente dizer QUAL feriado é hoje (`lib/tempo/feriados.ts`).
+ */
+export function feriadosNomeadosDoBrasilDoAno(ano: number): Array<{ data: string; nome: string }> {
   return [
-    ...FIXED_DATES.map((md) => `${ano}-${md}`),
+    ...FIXED_DATES.map((md, i) => ({ data: `${ano}-${md}`, nome: NOMES_DOS_FIXOS[i] ?? "Feriado nacional" })),
     // Dia Nacional de Zumbi e da Consciência Negra — doc 108, A (Lei 14.759/2023)
-    ...(ano >= PRIMEIRO_ANO_DA_CONSCIENCIA_NEGRA ? [`${ano}-11-20`] : []),
-    diaEmTornoDaPascoa(ano, -48), // Segunda-feira de Carnaval
-    diaEmTornoDaPascoa(ano, -47), // Terça-feira de Carnaval
-    diaEmTornoDaPascoa(ano, -2), // Sexta-feira Santa
-    diaEmTornoDaPascoa(ano, 60), // Corpo de Deus
+    ...(ano >= PRIMEIRO_ANO_DA_CONSCIENCIA_NEGRA
+      ? [{ data: `${ano}-11-20`, nome: "Dia Nacional de Zumbi e da Consciência Negra" }]
+      : []),
+    { data: diaEmTornoDaPascoa(ano, -48), nome: "Carnaval (segunda-feira)" },
+    { data: diaEmTornoDaPascoa(ano, -47), nome: "Carnaval (terça-feira)" },
+    { data: diaEmTornoDaPascoa(ano, -2), nome: "Sexta-feira Santa" },
+    { data: diaEmTornoDaPascoa(ano, 60), nome: "Corpus Christi" },
   ];
 }
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseSocialMessage } from "./parser";
+import { parseSocialMessage, parseSocialReaction } from "./parser";
+import { gravarReacaoDeMensagem } from "../reacao";
 import { ingestZernioInbound } from "../zernio/ingest";
 /** Verify the account from the tenant-owned session before any message effects. */
 export async function ingestSocialInbound(
@@ -20,6 +21,29 @@ export async function ingestSocialInbound(
   if (!session) return { status: "ignored", reason: "canal_desconhecido" };
   const platform = (session.metadata as Record<string, unknown>)?.social_platform;
   if (typeof platform !== "string") throw new Error("social_platform_missing");
+  // Reação (`reaction.received`) não é mensagem: vira linha `type='reaction'`
+  // ligada ao alvo, sem mover a conversa nem chamar a IA (`../reacao.ts`).
+  const reacao = parseSocialReaction(payload, session.zernio_account_id as string, platform);
+  if (reacao) {
+    const [alvo] = reacao.candidatosDoAlvo;
+    if (!alvo) return { status: "ignored", reason: "reacao_sem_alvo" };
+    const desfecho = await gravarReacaoDeMensagem(db, {
+      organizationId: org,
+      channelSessionId: sessionId,
+      externalId: reacao.externalId,
+      alvoExternalId: alvo,
+      candidatosDoAlvo: reacao.candidatosDoAlvo,
+      sufixoDoAlvo: null,
+      emoji: reacao.emoji,
+      author: reacao.author,
+      direction: "inbound",
+      sentAt: reacao.sentAt,
+      sentVia: null,
+      canal: platform,
+    });
+    if (desfecho.status === "falha") throw new Error(`reacao_social_falhou: ${desfecho.motivo}`);
+    return { status: desfecho.status === "sem_alvo" ? "ignored" : "ingested", reason: `reacao_${desfecho.status}` };
+  }
   const message = parseSocialMessage(payload, session.zernio_account_id as string, platform);
   if (!message) return { status: "ignored", reason: "evento_de_outra_conta_ou_sem_interesse" };
   return ingestZernioInbound(db, {

@@ -14,7 +14,11 @@ import {
   sincronizadoDeOrigem,
   type RascunhoDaEdicao,
 } from "@/lib/catalogo/edicao-do-produto";
+import { corpoDosAtributos, rascunhoDosAtributos, type RascunhoDosAtributos } from "@/lib/catalogo/atributos-no-formulario";
+import type { AtributoDeProduto } from "@/lib/schemas/atributos-de-produto";
 import type { Produto } from "@/lib/schemas/produtos";
+
+import { CamposDosAtributos } from "./_atributos";
 
 /**
  * O FORMULÁRIO DE EDIÇÃO — o que a tela nunca teve.
@@ -31,10 +35,21 @@ import type { Produto } from "@/lib/schemas/produtos";
  * sincronização sobrescreveria. Fotos seguem livres pelo botão de sempre: a
  * integração não mexe nelas.
  */
-export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFechar: () => void }) {
+export function EdicaoDoProduto({
+  produto,
+  atributos = [],
+  aoFechar,
+}: {
+  produto: Produto;
+  atributos?: AtributoDeProduto[];
+  aoFechar: () => void;
+}) {
   const t = useT();
   const router = useRouter();
   const [rascunho, setRascunho] = React.useState<RascunhoDaEdicao>(() => rascunhoDaEdicao(produto));
+  const [rascunhoAtributos, setRascunhoAtributos] = React.useState<RascunhoDosAtributos>(() =>
+    rascunhoDosAtributos(atributos, produto.atributos),
+  );
   const [salvando, setSalvando] = React.useState(false);
 
   const somenteLeitura = sincronizadoDeOrigem(produto.origem);
@@ -46,6 +61,13 @@ export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFec
       toast.error(erro);
       return;
     }
+    // Só as chaves que mudaram, com `null` para a apagada: o PATCH mescla.
+    const attrs = corpoDosAtributos(atributos, rascunhoAtributos, t, produto.atributos ?? {});
+    if (attrs.erro) {
+      toast.error(attrs.erro);
+      return;
+    }
+    if (Object.keys(attrs.atributos).length > 0) corpo.atributos = attrs.atributos;
     if (Object.keys(corpo).length === 0) {
       toast.error(t("Nada para alterar."));
       return;
@@ -172,6 +194,14 @@ export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFec
           />
         </label>
       </div>
+
+      <CamposDosAtributos
+        defs={atributos}
+        valor={rascunhoAtributos}
+        onChange={setRascunhoAtributos}
+        desabilitado={desabilitado}
+        prefixo="edicao"
+      />
 
       <label className="mt-3 flex items-center gap-2 text-sm">
         <input

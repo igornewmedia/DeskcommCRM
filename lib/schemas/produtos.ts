@@ -126,6 +126,10 @@ export const produtoCreateSchema = z.object({
   quantidade: z.number().int().min(0).default(0),
   ativo: z.boolean().default(true),
   imagem_url: z.string().trim().url().max(2000).optional(),
+  // Atributos personalizados (migration 5002). Aqui só a FORMA: o tipo de cada
+  // chave depende da definição da organização e é cobrado na rota
+  // (`resolverAtributos`, lib/catalogo/atributos.ts).
+  atributos: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -160,6 +164,8 @@ export interface Produto {
   ativo: boolean;
   origem: string;
   imagem_url: string | null;
+  /** Valores dos atributos personalizados, chave → valor (migration 5002). */
+  atributos: Record<string, string | number | boolean>;
   /** Caminhos em `catalog-photos`, na ordem da tela (migration 0390). */
   fotos: string[];
   updated_at: string;
@@ -168,4 +174,4 @@ export interface Produto {
 /** As colunas que a tela e a rota leem — uma lista, não duas. */
 export const COLUNAS_DO_PRODUTO =
   "id, codigo, nome, descricao, marca, categoria, cor, capacidade, preco_cents, moeda, custo_cents, " +
-  "controla_estoque, quantidade, ativo, origem, imagem_url, fotos, updated_at";
+  "controla_estoque, quantidade, ativo, origem, imagem_url, atributos, fotos, updated_at";

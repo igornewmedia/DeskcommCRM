@@ -39,7 +39,7 @@ vi.mock("../zernio/credentials", () => ({ zernioBaseUrl: () => "https://zernio.t
 
 import { DICIONARIO } from "@/lib/i18n/dicionario";
 
-import { ressincronizarAssinaturaSocial } from "./store";
+import { EVENTOS_DO_WEBHOOK_SOCIAL, ressincronizarAssinaturaSocial } from "./store";
 
 const ORG = "org-1";
 const CONTA = "a".repeat(24);
@@ -142,7 +142,13 @@ it("origem antiga: regrava a URL com a atual e mantém o caminho, sem tocar o ca
   expect(puts()).toEqual([
     {
       url: "webhooks/settings",
-      body: { webhookId: "wh-1", url: `${ORIGEM_ATUAL}${CAMINHO}`, isActive: true },
+      // Os eventos vão junto: é o que faz a conta antiga passar a receber reações.
+      body: {
+        webhookId: "wh-1",
+        url: `${ORIGEM_ATUAL}${CAMINHO}`,
+        isActive: true,
+        events: [...EVENTOS_DO_WEBHOOK_SOCIAL],
+      },
     },
   ]);
   // Nada de canal novo nem de arquivamento: a linha de channel_sessions não é escrita.

@@ -40,6 +40,13 @@ const CONTACT = "dddddddd-0000-4000-8000-000000000002";
 const SESSION = "dddddddd-0000-4000-8000-000000000003";
 const CONV = "dddddddd-0000-4000-8000-000000000004";
 const MSG = "dddddddd-0000-4000-8000-000000000005";
+// Segunda sessão, com um agente publicado que declara o PRÓPRIO teto (migration 5001).
+const SESSION_AGENTE = "dddddddd-0000-4000-8000-000000000013";
+const CONV_AGENTE = "dddddddd-0000-4000-8000-000000000014";
+const MSG_AGENTE = "dddddddd-0000-4000-8000-000000000015";
+const AGENTE = "dddddddd-0000-4000-8000-000000000016";
+const VERSAO_AGENTE = "dddddddd-0000-4000-8000-000000000017";
+const NO_AGENTE = { session: SESSION_AGENTE, conv: CONV_AGENTE, msg: MSG_AGENTE };
 
 interface EnvioCapturado {
   body: string;
@@ -76,6 +83,14 @@ const USO = {
  * turnos — sem o rótulo, o 2º e 3º teste mandariam os MESMOS textos do 1º e o gate
  * (corretamente) bloquearia por um motivo que não é o desta suíte. */
 function modeloQueInsisteEmMandar(n: number, rotulo: string) {
+  return modeloQueManda(
+    Array.from({ length: n }, (_, i) => `pergunta de qualificação número ${i + 1} (${rotulo})`),
+  );
+}
+
+/** Modelo fake que chama `send_message` uma vez para cada corpo, na ordem. */
+function modeloQueManda(corpos: string[]) {
+  const n = corpos.length;
   let chamadas = 0;
   return async (opts: { prompt?: unknown }) => {
     const msgs = (opts.prompt ?? []) as Array<{ role: string; content?: unknown }>;
@@ -93,7 +108,7 @@ function modeloQueInsisteEmMandar(n: number, rotulo: string) {
             type: "tool-call" as const,
             toolCallId: `c${chamadas}`,
             toolName: "send_message",
-            input: JSON.stringify({ body: `pergunta de qualificação número ${chamadas} (${rotulo})` }),
+            input: JSON.stringify({ body: corpos[chamadas - 1] }),
           },
         ],
         finishReason: { unified: "tool-calls" as const, raw: undefined },
@@ -150,16 +165,19 @@ function montaHandler(doGenerate: unknown, maxSendsPerTurn?: number) {
   });
 }
 
-async function rodaTurno(handler: ReturnType<typeof montaHandler>): Promise<Error | null> {
+async function rodaTurno(
+  handler: ReturnType<typeof montaHandler>,
+  alvo: { session: string; conv: string; msg: string } = { session: SESSION, conv: CONV, msg: MSG },
+): Promise<Error | null> {
   await pool.query("update job_queue set status = 'done' where status = 'pending'");
   const { job } = await m.queue.enqueueJob(pool, ORG, {
     kind: "inbound_turn",
     leadId: CONTACT,
     payload: {
-      conversation_id: CONV,
+      conversation_id: alvo.conv,
       contact_id: CONTACT,
-      channel_session_id: SESSION,
-      inbound_message_id: MSG,
+      channel_session_id: alvo.session,
+      inbound_message_id: alvo.msg,
       crm_event_id: "dddddddd-0000-4000-8000-000000000006",
     },
     maxAttempts: 1,
@@ -213,6 +231,37 @@ beforeAll(async () => {
     [MSG, ORG, CONV, SESSION, CONTACT],
   );
   await pool.query(
+    `insert into channel_sessions (id, organization_id, waha_session_name, status, webhook_secret_encrypted)
+     values ($1,$2,'limite-envios-agente','WORKING','\\x00'::bytea) on conflict (id) do nothing`,
+    [SESSION_AGENTE, ORG],
+  );
+  await pool.query(
+    `insert into ai_agents (id, organization_id, name, system_prompt)
+     values ($1, $2, 'Agente com teto 6', 'system') on conflict (id) do nothing`,
+    [AGENTE, ORG],
+  );
+  await pool.query(
+    `insert into ai_agent_versions
+       (id, organization_id, agent_id, version_number, system_prompt, provider, model, channel_session_id,
+        status, split_messages, max_sends_per_turn)
+     values ($1, $2, $3, 1, 'system', 'anthropic', 'claude-sonnet-4-6', $4, 'published', true, 6)
+     on conflict (id) do nothing`,
+    [VERSAO_AGENTE, ORG, AGENTE, SESSION_AGENTE],
+  );
+  await pool.query(`update ai_agents set published_version_id = $1 where id = $2`, [VERSAO_AGENTE, AGENTE]);
+  await pool.query(
+    `insert into conversations (id, organization_id, contact_id, channel_session_id, status, is_group)
+     values ($1,$2,$3,$4,'ai_handling',false) on conflict (id) do nothing`,
+    [CONV_AGENTE, ORG, CONTACT, SESSION_AGENTE],
+  );
+  await pool.query(
+    `insert into messages (id, organization_id, conversation_id, channel_session_id, contact_id,
+       type, direction, status, body, sent_via, sent_at)
+     values ($1,$2,$3,$4,$5,'text','inbound','delivered','Oi','external_device', now())
+     on conflict (id) do nothing`,
+    [MSG_AGENTE, ORG, CONV_AGENTE, SESSION_AGENTE, CONTACT],
+  );
+  await pool.query(
     `with v as (
        insert into playbook_versions (organization_id, layer, content)
        select null, 'platform', E'## Identidade\nAssistente de teste.'
@@ -261,5 +310,24 @@ describe("turno completo — send_message chamado repetidamente pelo modelo", ()
     expect(erro).toBeNull();
     expect(enviados).toHaveLength(2);
     expect(JSON.stringify(resultadosVistos)).not.toMatch(/max_sends_per_turn/);
+  });
+});
+
+describe("teto do AGENTE (migration 5001) — vence o da instalação", () => {
+  it("agente com 6 manda até 6 mensagens mesmo com a instalação em 2", async () => {
+    const erro = await rodaTurno(montaHandler(modeloQueInsisteEmMandar(8, "caso-d"), 2), NO_AGENTE);
+    expect(erro).toBeNull();
+    expect(enviados).toHaveLength(6);
+    expect(JSON.stringify(resultadosVistos)).toMatch(/teto: 6/);
+  });
+
+  it("em bolhas: 8 parágrafos saem em 6 bolhas, o excedente junto na última", async () => {
+    const paragrafos = Array.from({ length: 8 }, (_, i) => `Parágrafo ${i + 1} do caso-e.`);
+    const erro = await rodaTurno(montaHandler(modeloQueManda([paragrafos.join("\n\n")]), 2), NO_AGENTE);
+    expect(erro).toBeNull();
+    expect(enviados).toHaveLength(6);
+    expect(enviados[0]?.body).toBe("Parágrafo 1 do caso-e.");
+    expect(enviados[5]?.body).toContain("Parágrafo 6 do caso-e.");
+    expect(enviados[5]?.body).toContain("Parágrafo 8 do caso-e.");
   });
 });
