@@ -19,6 +19,7 @@ import { audit } from "@/lib/audit";
 import { resolveAuthDual, tetoDeEscritaDoToken } from "@/lib/api/auth-dual";
 import { fail, ok } from "@/lib/api/wrappers";
 import { apagarDoBucket } from "@/lib/catalogo/fotos-no-bucket";
+import { controlaEstoquePadrao, modoDeEstoqueDaOrganizacao } from "@/lib/catalogo/modo-de-estoque";
 import { COLUNAS_DO_PRODUTO, produtoCreateSchema, produtoPatchSchema } from "@/lib/schemas/produtos";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -66,9 +67,19 @@ async function atualizar(
   }
   // PUT sem `codigo` mantém o atual: ele é autopreenchido no cadastro e é a
   // chave que a automação usa para comparar listas.
-  const dados = modo === "put" ? { ...OPCIONAIS_ZERADOS_NO_PUT, ...parsed.data } : parsed.data;
-
   const { supabase, organizationId } = authz;
+  // PUT é o estado inteiro: sem `controla_estoque`, vale o mesmo padrão do POST.
+  const dados =
+    modo === "put"
+      ? {
+          ...OPCIONAIS_ZERADOS_NO_PUT,
+          ...parsed.data,
+          controla_estoque:
+            parsed.data.controla_estoque ??
+            controlaEstoquePadrao(await modoDeEstoqueDaOrganizacao(supabase, organizationId)),
+        }
+      : parsed.data;
+
   const { data, error } = await supabase
     .from("catalog_products")
     .update(dados)

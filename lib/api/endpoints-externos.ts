@@ -31,7 +31,7 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
     escopo: "mcp:write",
     papel: "manager",
     descricao:
-      "Cadastra um produto no catálogo. Valores em centavos. Sem `codigo`, o sistema gera o próximo PRD-00001. Custo, quantidade, cor e capacidade são opcionais.",
+      "Cadastra um produto no catálogo. Valores em centavos. Sem `codigo`, o sistema gera o próximo PRD-00001. Custo, quantidade, cor e capacidade são opcionais. `controla_estoque` (true/false) é opcional: sem ele, vale o modo de estoque da empresa (`false` em \"sem controle de estoque\", `true` em \"somente com estoque\").",
     exemplo: {
       nome: "iPhone 15 Pro 256GB",
       marca: "Apple",
@@ -40,6 +40,7 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
       preco_cents: 749900,
       custo_cents: 620000,
       quantidade: 3,
+      controla_estoque: true,
       cor: "Titânio natural",
       capacidade: "256GB",
     },
@@ -50,7 +51,7 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
     arquivo: "app/api/v1/products/route.ts",
     escopo: "mcp:read",
     papel: "viewer",
-    descricao: "Lista o catálogo. `?busca=` filtra por nome, código ou marca; `?pagina=N` pagina de 50 em 50.",
+    descricao: "Lista o catálogo. `?busca=` filtra por nome, código ou marca; `?pagina=N` pagina de 50 em 50. Cada produto traz `disponivel` (true/false), calculado pelo modo de estoque da empresa: em \"sem controle de estoque\" todo produto ativo está disponível; em \"somente com estoque\", só o ativo com quantidade maior que zero ou com `controla_estoque: false`.",
   },
   {
     metodo: "PUT",
@@ -59,13 +60,14 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
     escopo: "mcp:write",
     papel: "manager",
     descricao:
-      "Substitui o produto inteiro pelo corpo (sincronizar com o fornecedor). Opcionais que não vierem ficam vazios; sem `codigo`, o atual é mantido.",
+      "Substitui o produto inteiro pelo corpo (sincronizar com o fornecedor). Opcionais que não vierem ficam vazios; sem `codigo`, o atual é mantido; sem `controla_estoque`, vale o modo de estoque da empresa, como no POST.",
     exemplo: {
       nome: "iPhone 15 Pro 256GB",
       marca: "Apple",
       categoria: "Smartphones",
       preco_cents: 729900,
       quantidade: 5,
+      controla_estoque: true,
       cor: "Titânio natural",
       capacidade: "256GB",
     },
@@ -76,8 +78,8 @@ export const ENDPOINTS_EXTERNOS: readonly EndpointExterno[] = [
     arquivo: "app/api/v1/products/[id]/route.ts",
     escopo: "mcp:write",
     papel: "manager",
-    descricao: "Muda só os campos enviados (ex.: preço ou quantidade); o resto do produto fica como está.",
-    exemplo: { preco_cents: 719900, quantidade: 2 },
+    descricao: "Muda só os campos enviados (ex.: preço, quantidade ou `controla_estoque`); o resto do produto fica como está.",
+    exemplo: { preco_cents: 719900, quantidade: 2, controla_estoque: true },
   },
   {
     metodo: "DELETE",
