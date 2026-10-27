@@ -10,6 +10,8 @@
 
 ## Convenções
 
+Atendimento conjunto (#2542/#2848): a repetição com gestor, convidada, colega sem convite e viewer está **pendente**, junto da organização vizinha e da remoção/reentrada entre sessões abertas. Escopo, controles e limites medidos em [atendimento-conjunto-2848.md](atendimento-conjunto-2848.md); ainda não é prova visual verde.
+
 - `[P0]` primeira impressão — bug aqui é vergonha pública; prioridade máxima.
 - `[P1]` rotina diária do operador/atendente.
 - `[P2]` exploração/edge.
@@ -271,7 +273,7 @@ consertos estão em commits próprios desta branch — procure pelas palavras ab
 |---|------|-------------|
 | J5.1 | Admin convida atendente pela UI (sem Resend) | UI diz a verdade + accept_url copiável |
 | J5.2 | Convidado abre link, cria sessão, aceita | vira membro agent, cai no inbox |
-| J5.3 | Atendente vê APENAS fila + suas conversas | escopo RLS na prática |
+| J5.3 | Atendente vê APENAS fila + suas conversas | escopo RLS na prática; a leitura de mídia também é exercitada pela rota real em `tests/e2e/inbox-scope.spec.ts`, com recursos sintéticos. **Execução confirmada:** [CI de 2026-10-26, parte 1](https://github.com/melgarafael/DeskcommCRM/actions/runs/40415056701/job/121895249691), caso de mídia em 5,5s, sem repetição. O teste de rota com Storage dublê está em `tests/unit/midia-da-mensagem-isolamento.test.ts` |
 | J5.4 | Atendente dá claim numa conversa da fila | claim ok; 2º atendente levando 409 amigável |
 | J5.5 | Transferir conversa pra colega | imediata, contador de não-lidas zera pro novo dono |
 | J5.6 | Atendente tenta ver billing/api-tokens | 403 página amigável |
@@ -532,8 +534,15 @@ oficial, o formulário oferece os modelos aprovados DAQUELE número
 a mesma do inbox). Migration 0710.
 
 Spec: `tests/e2e/campanha-com-modelo-aprovado.spec.ts`, na `SPECS_PARTE_5`. Os
-casos 1 e 2 rodam no CI; o 3 precisa do dublê do provedor (ambiente do
-`next start`) e pula sem ele — o comando está no cabeçalho da spec.
+casos 1, 2 e o da escolha do envio rápido rodam no CI; o envio de teste e a
+rodada rápida precisam do dublê do provedor (ambiente do `next start`) e pulam
+sem ele — o comando está no cabeçalho da spec.
+
+Envio rápido (migration 0711, 2026-10-16): `campaigns.velocidade` (`gradual` |
+`rapida`, só com modelo). Na rápida, a rodada do cron manda em rajada
+(`lib/campanhas/rajada.ts`: 6 inícios por segundo, 4 em voo, até 38 s por
+rodada) em vez de uma mensagem por rodada; o 429 do provedor e o 130429 da
+plataforma devolvem a pessoa à fila em vez de falhá-la.
 
 | # | Caso | Expectativa | Resultado |
 |---|------|-------------|-----------|
@@ -543,6 +552,8 @@ casos 1 e 2 rodam no CI; o 3 precisa do dublê do provedor (ambiente do
 | J52.4 | Enviar teste (com o dublê do provedor) | o provedor recebe nome, idioma, `templateParams` na ordem do contrato e `headerMedia`; a conversa guarda o modelo com o texto preenchido | **PASS pela tela, local** — `evidence/campanha-com-modelo-aprovado/05-teste-enviado.png`; no CI pula (sem dublê) |
 | J52.5 | Falha da plataforma no envio | da pessoa (131050, 131049, 131026) segue para a próxima com o motivo em frase; do envio inteiro (132015, 131048, 131042…) pausa a campanha com o motivo | **PASS (unit)** — `lib/channels/erro-da-plataforma.test.ts`; rodada **NÃO MEDIDA** pela tela |
 | J52.6 | Entrega e leitura pelo oficial direto | o trigger de ack lê `delivered_at`/`read_at` e o destinatário vira entregue/lido | **PASS (banco)** — do #2937: `tests/invariants/ack-da-api-oficial-alcanca-o-destinatario.test.ts` |
+| J52.7 | Escolher «Rápido» no ritmo de uma campanha do número oficial (migration 0711) | a campanha que já existia vem «Gradual»; «Rápido» grava `velocidade = rapida`, some o campo de intervalo, e a confirmação de «Iniciar envio» diz «Envio rápido: sai tudo em cerca de 1 min.» | **PASS pela tela + banco** (2026-10-16) — `evidence/campanha-com-modelo-aprovado/06-envio-rapido-escolhido.png` |
+| J52.8 | Campanha rápida de 3 pessoas, uma rodada do cron (com o dublê do provedor) | o provedor recebe os 3 modelos, cada um com o primeiro nome da pessoa; os 3 destinatários ficam `sent`, a campanha `completed`, e a tela mostra «Enviadas 3» | **PASS pela tela, local** (2026-10-16) — `evidence/campanha-com-modelo-aprovado/07-rapida-lista-inteira-numa-rodada.png`; no CI pula (sem dublê) |
 
 ## J9 — Ver o que o follow-up já fez, e intervir sem matá-lo `[P1]`
 
@@ -704,6 +715,7 @@ num job que já leva meia hora.
 | J12.8 | O push sai pelo funil, e no modo oculto sem corpo nem ícone | `lib/notifications/web_push.test.ts`, `tests/unit/push-sai-so-pelo-funil.test.ts` | PASS (unit) |
 | J12.9 | Sair, desligar os alertas e «Sair de todos os dispositivos» encerram o push; «Sair» desconecta TODOS os aparelhos (o `signOut()` do auth-js é `global`) e por isso apaga as inscrições de todos eles — achado da prova pela tela do #3113: só a do aparelho que saiu era apagada; com o push de mensagem desligado, os outros pushes aparecem desligados e travados, e o aparelho não volta a se inscrever | `lib/notifications/push_client.test.ts`, `app/app/settings/notifications/_client.test.tsx`, `hooks/auth/AuthProvider.signOut.test.tsx`, `app/actions/settings/signOutEverywhere.test.ts`, `app/actions/auth/signOut.test.ts`; sem e2e (o CI não tem VAPID, não há inscrição) | PASS (unit) |
 | J12.10 | Recarregar Configurações › Notificações com a permissão do navegador concedida deixa os interruptores de Push usáveis; com ela negada, o aviso de bloqueio aparece sem erro de hidratação — achado da prova pela tela do #3113: o snapshot de servidor da permissão era o valor real, e os seis ficavam `disabled` para sempre (e #418 a cada carga com permissão negada) | `app/app/settings/notifications/_client.hidratacao.test.tsx` (HTML do servidor + `hydrateRoot`) | PASS (unit) |
+| J12.11 | A tela de atualização distingue retrato recente, retrato antigo e agente offline; uma versão nova já anunciada permanece disponível | `tests/e2e/system-update.spec.ts`, caso «retrato antigo informa a última conferência sem antecipar o comando manual»; login e API reais, idade preparada somente na fixture, screenshots anexadas | PREPARADO — execução real pendente no CI; [contrato e limites](atualizacao-retrato-host.md) |
 
 **Por que J12.5 não é `e2e`, medido e não suposto.** Ela nasceu como asserção
 `toBeEnabled()` na spec, e não podia viver lá. Medido no Chromium do Playwright,
@@ -1779,6 +1791,7 @@ CI — a coluna abaixo diz QUEM mede, não o que foi medido.
 | J49.5 (A-5) | Gesto de voltar do sistema | devolve a lista, sem `id=` | E2E (CI) |
 | J49.6 (A-6) `[P0]` | WhatsApp desconectado | com a faixa na tela o documento não rola (`scrollY` ≤ 1 depois de `scrollTo` ao fim); aberta a conversa, topo da camada = base das faixas (±1), a faixa continua por cima (`elementFromPoint`), o composer termina ≤ 844 e a barra de voltar fica abaixo da faixa; de volta à lista e com a página rolada (espaçador de 3000px no `<main>`), o topo do `<header>` sticky = base das faixas (±1) e `elementFromPoint` no topo dele cai no header | E2E (CI, conexão `FAILED` semeada e apagada no `finally`, com a remoção conferida) + UNIT `faixas-de-cima` |
 | J49.7 (A-7) | Teclado aberto, modelo Android | janela de 500px: `data-teclado-aberto`, fileira de ações escondida, último balão dentro do fio e composer ≤ 500 | E2E (CI) + UNIT `altura-visivel` |
+| J49.8 (A-8) | A ficha do contato no celular | aberta pelo «Ficha» (folha): «Tags do contato», «Novo Lead», «Ver contato», o campo «Nova tag…» ≥ 44 de altura; «Adicionar tag» ≥ 44×44 (o gatilho da cor, só de `manager+`, não é medido: a spec entra como `agent`) — a ficha sobrescrevia os 44px do primitivo com `h-7` (28px); acima de `lg` a densidade de mouse fica (`lg:h-7`) | E2E (CI); evidência `evidence/atender-pelo-celular-20261021/a8-ficha-alvos-de-toque.png` |
 
 **NÃO MEDIDO — só o aparelho prova:** o teclado do iOS (que NÃO encolhe a
 janela: ali quem mede é o `visualViewport.offsetTop`, e a fórmula da camada com
@@ -3963,3 +3976,117 @@ código e a hora anteriores e se houve confirmação).
 **NÃO COBERTO, declarado:** que o canal de verdade entrega o reenvio (o CI não tem
 WhatsApp; o caminho termina em «Não enviada — sem conexão»); o toque num iPhone e num
 Android reais; o reenvio de mídia pela tela (coberto só pela regra e pela rota).
+
+## Conferência integrada de correções — 26/10/2026
+
+[Registro do lote #3462](lote-3462-2026-10-26.md): oito contribuições provadas numa
+aplicação compilada, com banco fresco, navegador, Storage, Realtime, autorização e
+webhook assinado reais. O registro delimita cada PASS, a autoria e os serviços externos
+que não foram medidos; capturas e traces contêm somente dados sintéticos.
+
+## Controles do topo — nome acessível `[P1]` (2026-10-26, PR #3409)
+
+O seletor de idioma e o menu da pessoa incluem seus textos visíveis (PT/ES e
+iniciais) no nome acessível, sem mudar a aparência. O Axe 4.14 encontrou a ausência
+na regra `label-content-name-mismatch`, nos dois casos de `rbac-roles.spec.ts`:
+admin com MFA em API Tokens/cobrança e atendente no Inbox/Funis.
+
+**PASS pela tela:** os mesmos dois casos, sem excluir a regra do Axe, em banco
+fresco do `baseline.sql` com `ON_ERROR_STOP=1`, `bootstrap-owner.ts`, contas
+sintéticas e build de produção, no candidato `bfca6673f` sobre a base `bb7b6cb33`.
+Capturas dos dois casos e traces foram inspecionados; evidência local em
+`.superpowers/evidence/pr3409-01a178b3/`. O unitário
+`tests/unit/controles-do-topo-nome-acessivel.test.tsx` cobre os nomes em PT/ES e
+iniciais com nome completo, um nome e fallback pelo e-mail: 8 vermelhos antes,
+8 verdes depois. **Não medido:** reconhecimento de voz em aparelho real e o
+fluxo inteiro em espanhol (a cobertura em espanhol aqui é do componente).
+
+## Atendimento e follow-ups — integração #3475 (2026-10-26)
+
+**Medido em bancada sintética real:** build de produção `20f335eae` /
+`cyznjcUkNaQa9Fn5H6iU4`, Supabase próprio com baseline install/update
+`ON_ERROR_STOP=1`, GoTrue e Realtime. [Relatório e limites](../../evidence/atendimento-followups-3475/README.md).
+Os seis cenários passaram em rodadas dirigidas, sem reivindicar a suíte inteira:
+
+| Caso | Resultado observado |
+| --- | --- |
+| Cancelar dormente/coletando no dossiê | PASS: fila → dossiê → estado/timeline imediato, banco/evento, reload e tick sem despertar; viewer403 e outra org404 |
+| Parar dormente pelo Inbox | PASS: botão antes, inscrição cancelled/sem relógio, reload carregado sem Parar e com seletor para Iniciar |
+| Enviar por integração em nome de atendente | PASS: transporte e pausa de cinco minutos reais; token puro não pausa, sem escopo403, retorno automático na tela após o prazo |
+| Assinatura de automação e Prospecção | PASS: produtores reais, provider HTTP controlado, assinatura exata no receiver WAHA, mensagem persistida e corpo no Inbox |
+| Filtro/âncora dos avisos | PASS no recorte INSERT/Realtime, toast, rota autenticada e decisão do job Web Push: palavra recusada/aceita, mídia sem texto e agente já engajado |
+| ACK fora de ordem e recuperação | PASS: UI → receiver; webhook HMAC, read não regride por2/1/-1; failed não recupera por1, recupera por2/3; indicador/reload e isolamento tenant |
+| Bolha invisível no turno real | PASS da guarda: webhook HMAC → pós-entrada → drain/claim/fronteira/handler; U+200E recusado com corpo_vazio observado no HTTP do provider e traço canônico não dry-run, sem outbound/HTTP WAHA. Controle legível completou com assinatura e bolha |
+
+**Limites:** a tentativa invisível termina por HTTP400 intencional do provider
+depois da recusa, para limitar a prova; não mede reescrita autônoma. O sandbox
+intercepta a tool antes dessa guarda e não foi aceito como prova. Nos quatro
+controles de avisos não foi medido o despacho completo da IA pela pós-entrada/handler;
+a âncora é histórico sintético persistido. Entrega de Push/FCM não foi medida
+(envelope não recebido), nem modelo/WhatsApp externos. PG15 foi usado na bancada
+Supabase; os invariantes PG17 são do CI.
+
+**Achados da bancada:** preflight confundia UUID reservado do candidato com envio;
+Prospecção exige admin, ferramenta e funil publicados; INSERT anterior ao JOIN
+Realtime perdia o toast; ausência de botão durante reload ainda vazio não prova
+estado. O runner foi corrigido e as tentativas/capturas antigas foram conservadas
+com esses limites. O manager original não foi promovido, os guards do produto
+não foram alterados e os recursos exclusivos foram removidos ao fim.
+
+## Lote de correções de acesso, documento e atendimento (2026-10-26)
+
+**Preparado; NÃO EXECUTADO neste lote no navegador nem em Postgres local.**
+Os specs existentes no CI usam usuários sintéticos, app e banco reais. O CI
+publica a evidência nova em `evidence/lote-bugfixes-01a178b3/` somente se a parte
+passar. Este documento não afirma que capturas já existam.
+
+| Jornada | Instrumento preparado |
+|---|---|
+| Rascunho preservado, apagar religa, `/` substitui e recurso com imagem abre prévia sem enviar | `inbox-responder-citando.spec.ts`, upload real no Storage e contagem de mensagens |
+| CPF inválido após blur, corrigir e criar; vazio opcional; organização PT confere NIF em vez de CPF | `contato-salva-email.spec.ts`, cliques reais e POST do formulário |
+| Dois CNPJs informados inválidos não criam empresas, pessoas ou contatos de mesmo nome | `importar-leads-planilha.spec.ts`, API multipart real, lote/linhas e tabelas relidas |
+| Em Só os seus, abrir conversa livre assume; repetir abertura e dois claims 409 não repetem auditoria, evento nem atividade | `inbox-responder-citando.spec.ts`, sessão agent real e quatro contagens no banco |
+| Exceção SQL só para claim próprio com CAS, transferência recusada, dois tenants e dois claims concorrentes com um vencedor | `assumir-conversa-livre-claim-cas.test.ts`, invariante Postgres, sem alterar a cerca de transferência anterior |
+| Conta nova por convite, alternar cadastro/login sem perder token, confirmar no Mailpit e entrar só na equipe convidada | `invite-lifecycle.spec.ts`, conta ausente antes, token_hash de confirmação, assinatura adulterada não preenche e-mail, vínculo agent único e convite aceito; até quatro capturas |
+
+Os registros anteriores de #3475 permanecem acima com seu head efetivamente
+medido. Não provam este lote. As ofertas de campanha são capacidade nova do
+#3503 e permanecem fora desta integração; não há receiver LLM ou prova de MCP
+neste recorte. Não houve execução de build, typecheck, DB, Docker ou browser local.
+A aprovação continua dependendo dos checks obrigatórios e da inspeção dos
+artefatos produzidos no head do lote.
+
+
+## Nome e rótulo do documento recebido — adaptação #3511 (2026-10-26)
+
+**Prova real confirmada no head `20e366d6f`.** A
+[parte 6 do CI de 2026-10-27](https://github.com/melgarafael/DeskcommCRM/actions/runs/40449568814/job/122009511765)
+passou os 87 casos, incluindo o documento em 11,4s, sobre o checkout de merge
+`28912fdea8ad75e5114f48ba073c2c56428dfa7f`. O agregador E2E e as sete partes
+passaram. A composição posterior com `main@f44736e7b` mantém o código e o caso
+do documento byte a byte; seus checks próprios ainda precisam confirmar o conjunto.
+
+O caso de `atender-pelo-celular.spec.ts` usa banco e Storage reais, a conta agent
+e a conversa sintética do spec. XLSX/PDF com nomes acentuados são salvos por
+toque nativo, com `suggestedFilename` e bytes completos conferidos. A rota de
+preview é relida sem pedir download. Uma terceira mensagem sem nome usa objeto
+real de extensão genérica `.bin` e mostra `Documento XLSX` pelo MIME; a medição
+física confirmou 124px visíveis para 124px de texto. Os unitários mantêm os
+controles discriminantes sem path; o E2E precisa do objeto para montar a bolha.
+Nenhuma rota, resposta ou Storage foi dublado nesse caso.
+
+Os três PNGs e os dois JSONs em `evidence/documento-3511-01a178b3/` foram
+recolhidos do artefato e inspecionados. Cada download mede área de 44×44px,
+quatro pontos livres no download e quatro no menu, centro na viewport de
+390×844, cartão contido e página sem overflow horizontal. O toque concluiu e
+a cadeia observada foi rota302 → Storage200. Nomes arbitrários longos mantêm
+truncamento e título integral. As capturas e recibos físicos são preservados
+antes da limpeza dos recursos sintéticos.
+
+O CI já executa o spec na parte 6; a distribuição não mudou. Trace/vídeo são
+opções de worker e ficam desligados neste arquivo para não arquivar URLs
+assinadas; as capturas e assertivas antigas permanecem, mas suas falhas não
+terão trace/vídeo. Não foi medido download na janela anterior à persistência
+do worker, viewer PDF ou aplicativo externo. O PASS de UX deste head não
+substitui os cinco checks obrigatórios: o verify antigo falhou no teste de
+relógio, cujo reparo central entra pela composição da main, sem repetir a rodada antiga.

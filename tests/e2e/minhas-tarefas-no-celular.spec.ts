@@ -4,7 +4,7 @@
  * O lembrete de prazo e o push de tarefa criada levam a
  * `/app/tasks?assigned_to=me`. O que só a tela responde:
  *  · por essa URL aparecem as tarefas da pessoa, e as dos colegas não;
- *  · "Todas" traz as dos colegas de volta;
+ *  · "Todos", no seletor Responsável, traz as dos colegas de volta;
  *  · a 390px os controles têm alvo de dedo (44px), a caixa de concluir alcança
  *    44px sem crescer o desenho, e o lápis aparece sem hover;
  *  · tocar na caixa conclui a tarefa no banco.
@@ -118,7 +118,7 @@ test.describe("Minhas tarefas no celular — o que o lembrete abre", () => {
     await limparFixtures();
   });
 
-  test("pela URL do lembrete só as minhas; 'Todas' traz as outras; alvos de dedo; tocar conclui", async ({
+  test("pela URL do lembrete só as minhas; 'Todos' traz as outras; alvos de dedo; tocar conclui", async ({
     page,
   }) => {
     await login(page, creds.users.agent!.email, creds.password);
@@ -137,7 +137,11 @@ test.describe("Minhas tarefas no celular — o que o lembrete abre", () => {
       "o navegador precisa se apresentar como toque (pointer: coarse, hover: none)",
     ).toBe(true);
 
-    for (const nome of ["Minhas", "Todas", "Atualizar", "Nova tarefa"]) {
+    const seletor = tela.getByRole("combobox", { name: "Responsável" });
+    await expect(seletor).toContainText("Minhas");
+    const hSeletor = await altura(seletor);
+    expect(hSeletor, `"Responsável" com ${hSeletor}px de altura — alvo de dedo é 44px`).toBeGreaterThanOrEqual(44);
+    for (const nome of ["Atualizar", "Nova tarefa"]) {
       const h = await altura(tela.getByRole("button", { name: nome, exact: true }));
       expect(h, `"${nome}" com ${h}px de altura — alvo de dedo é 44px`).toBeGreaterThanOrEqual(44);
     }
@@ -182,10 +186,11 @@ test.describe("Minhas tarefas no celular — o que o lembrete abre", () => {
     const sobraNoMain = await tela.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(sobraNoMain, `o conteúdo rola ${sobraNoMain}px para o lado dentro do <main>`).toBeLessThanOrEqual(1);
 
-    await tela.getByRole("button", { name: "Todas", exact: true }).tap();
+    await seletor.tap();
+    await page.getByRole("option", { name: "Todos", exact: true }).tap();
     await expect(tela.getByText(ALHEIA, { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(tela.getByText(MINHA, { exact: true })).toBeVisible();
-    await captura(page, "02-todas");
+    await captura(page, "02-todos");
 
     await caixa.tap();
     await expect

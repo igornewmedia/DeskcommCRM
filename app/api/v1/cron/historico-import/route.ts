@@ -18,7 +18,7 @@
  * simultâneas da mesma importação (ver `rodada.ts`): isso é daqui. A trava é
  * `cursor.trava_ate`, gravada por update condicional no `updated_at` que esta
  * chamada leu: quem perde a corrida não roda. A rodada apaga a trava sozinha,
- * porque grava o cursor dela inteiro (só `indiceConversa`, `offsetMensagens`,
+ * porque grava o cursor dela inteiro (só `indiceConversa`, `offsetMensagens`, `conferida`,
  * `desde`). Se o processo morrer no meio, a trava vence em `TRAVA_MS`. Sem
  * migration: a chave mora no jsonb que já existe.
  *

@@ -45,6 +45,17 @@
  * Refazer um pedaço (rodada interrompida antes de gravar o cursor) é seguro: a
  * mensagem já gravada é reconhecida pelo `external_id` e não é inserida de novo.
  *
+ * ─── Conferir a conversa inteira antes de gravar ────────────────────────────
+ *
+ * Cada conversa é lida DUAS vezes. A primeira passada (`conferida` falso no
+ * cursor) só pergunta pela trava de apagamento a pedido, página a página, e
+ * não grava nada; a segunda grava. Se a identidade marcada só aparece na 3ª
+ * página, nada da conversa entrou: desfazer depois (apagar linhas, correr
+ * atrás da mídia que o worker já guardou) seria código destrutivo para um
+ * caso que a ordem resolve. O preço é o dobro de páginas pedidas ao canal,
+ * que só alonga a importação em rodadas. A passada de gravação segue
+ * perguntando, para a marca criada entre as duas passadas.
+ *
  * ─── O que cada contador conta ──────────────────────────────────────────────
  *
  * `mensagens_gravadas` conta no insert e nunca recua: a linha existe. A linha
@@ -88,6 +99,12 @@ export interface CursorDaImportacao {
   offsetMensagens: number;
   /** Epoch em segundos; fixado na primeira rodada. */
   desde?: number;
+  /**
+   * A conversa de `indiceConversa` já passou inteira pela trava de apagamento
+   * a pedido: `offsetMensagens` é da passada de gravação. Falso (ou ausente):
+   * é da passada de conferência, que não grava.
+   */
+  conferida?: boolean;
 }
 
 export interface OpcoesDaRodada {
@@ -174,6 +191,12 @@ export async function rodarUmaRodada(
     indiceConversa: cursorSalvo.indiceConversa ?? 0,
     offsetMensagens: cursorSalvo.offsetMensagens ?? 0,
     desde: cursorSalvo.desde ?? Math.floor(Date.now() / 1000) - imp.dias * SEGUNDOS_POR_DIA,
+    conferida: cursorSalvo.conferida ?? false,
+  };
+  const irParaConversa = (posicao: number) => {
+    cursor.indiceConversa = posicao;
+    cursor.offsetMensagens = 0;
+    cursor.conferida = false;
   };
   const desta = { conversas: 0, gravadas: 0, existentes: 0, ignoradas: 0 };
   // Fora de `desta` de propósito: mídia resolvida não volta a `pendente` quando a
@@ -271,16 +294,12 @@ export async function rodarUmaRodada(
 
       for (const conversa of pagina.conversas) {
         if (conversa.posicao < cursor.indiceConversa) continue;
-        if (conversa.posicao > cursor.indiceConversa) {
-          cursor.indiceConversa = conversa.posicao;
-          cursor.offsetMensagens = 0;
-        }
+        if (conversa.posicao > cursor.indiceConversa) irParaConversa(conversa.posicao);
 
         // Conversa sem nada dentro da janela: o canal já diz pela última
         // mensagem, e a página já está em memória (sem nova chamada).
         if (conversa.ultimaEm !== null && conversa.ultimaEm < cursor.desde) {
-          cursor.indiceConversa += 1;
-          cursor.offsetMensagens = 0;
+          irParaConversa(cursor.indiceConversa + 1);
           firmar();
           continue;
         }
@@ -290,7 +309,10 @@ export async function rodarUmaRodada(
         const conferidas = new Set<string>();
         // Chat @lid: o telefone pode não vir em mensagem nenhuma do acervo, e quem
         // foi apagado só com telefone voltaria pelo lid. O canal resolve, uma vez.
-        // ponytail: o cliente devolve null em falha de rede; aí só o lid é conferido.
+        // `null` é "o canal ainda não sabe" (a tabela do lid enche com o uso) e
+        // segue só com o lid: barrar isso deixaria de fora quase todo chat @lid
+        // antigo. Falha de transporte LANÇA e para a rodada, como a pergunta da
+        // marca: conferir só o lid porque a rede caiu não é conferir.
         let telefoneDoChat: string | null | undefined;
         for (;;) {
           if (noTeto()) return await encerrar("rodando");
@@ -299,7 +321,7 @@ export async function rodarUmaRodada(
             telefoneDoChat = null;
             if (lidDoChat) {
               chamadas += 1;
-              telefoneDoChat = await canal.resolvePhoneForLid(nomeNoCanal, lidDoChat);
+              telefoneDoChat = await canal.resolvePhoneForLid(nomeNoCanal, lidDoChat, { falhaLanca: true });
               continue;
             }
           }
@@ -311,7 +333,27 @@ export async function rodarUmaRodada(
             desde: cursor.desde,
           });
           // Só `lidas === 0` é fim: página inteira recusada pelo schema não é.
-          if (lidas === 0) break;
+          if (lidas === 0) {
+            if (cursor.conferida || cursor.offsetMensagens === 0) break;
+            // Conferida inteira e sem marca: a passada de gravação começa do zero.
+            cursor.conferida = true;
+            cursor.offsetMensagens = 0;
+            firmar();
+            continue;
+          }
+
+          if (!cursor.conferida) {
+            const aConferir = mensagens.filter((p) => p.id && !ehReacao(p));
+            if (aConferir.length > 0 && (await titularApagadoNaPagina(admin, imp, conversa.chatId, telefoneDoChat, aConferir, conferidas))) {
+              // Apagado a pedido: nada da conversa foi gravado; tudo o que se leu dela fica de fora.
+              desta.ignoradas += cursor.offsetMensagens + lidas;
+              break;
+            }
+            processadas += lidas;
+            cursor.offsetMensagens += lidas;
+            firmar();
+            continue;
+          }
 
           // O que o schema recusou também foi lido e não vira linha. Os dois
           // contadores voltam a este ponto se a página for largada para ser refeita.
@@ -324,7 +366,7 @@ export async function rodarUmaRodada(
             else validas.push(p);
           }
           if (validas.length > 0 && (await titularApagadoNaPagina(admin, imp, conversa.chatId, telefoneDoChat, validas, conferidas))) {
-            // Apagado a pedido: esta página e o resto da conversa ficam de fora.
+            // Marca criada depois da passada de conferência: daqui em diante, nada.
             desta.ignoradas += validas.length;
             break;
           }
@@ -361,17 +403,13 @@ export async function rodarUmaRodada(
         }
 
         desta.conversas += 1;
-        cursor.indiceConversa += 1;
-        cursor.offsetMensagens = 0;
+        irParaConversa(cursor.indiceConversa + 1);
         firmar();
         if (noTeto()) return await encerrar("rodando");
       }
 
       // Página esgotada: o que sobrou depois da última conversa 1:1 era grupo ou status.
-      if (offsetDaPagina + pagina.lidas > cursor.indiceConversa) {
-        cursor.indiceConversa = offsetDaPagina + pagina.lidas;
-        cursor.offsetMensagens = 0;
-      }
+      if (offsetDaPagina + pagina.lidas > cursor.indiceConversa) irParaConversa(offsetDaPagina + pagina.lidas);
       firmar();
     }
   } catch (err) {
@@ -391,8 +429,8 @@ export async function rodarUmaRodada(
  * canônico, cada lid, os alternativos do `_data.key`, o telefone que o canal
  * resolveu para o lid do chat), uma chamada por
  * identidade ainda não conferida nesta conversa: qualquer uma marcada basta.
- * Roda a cada página, antes do upsert, porque uma identidade pode aparecer só
- * numa página posterior. Erro na pergunta para a rodada (falha fechada):
+ * Roda em cada página da passada de conferência, que lê a conversa inteira
+ * antes de a primeira linha ser gravada, e de novo na de gravação. Erro na pergunta para a rodada (falha fechada):
  * importar na dúvida desfaria o apagamento.
  */
 async function titularApagadoNaPagina(

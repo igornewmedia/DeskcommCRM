@@ -915,13 +915,23 @@ export class WahaClient {
    * vazia e enche conforme as conversas acontecem. `null` aqui significa "ainda
    * não sei", não "não existe" — quem chama precisa poder tentar de novo depois
    * sem tratar isto como erro.
+   *
+   * `falhaLanca`: quem decide algo de segurança pela resposta (a trava de
+   * apagamento a pedido da importação do histórico) precisa separar "não sei"
+   * de "não consegui perguntar". Com ele, falha de transporte e 5xx lançam;
+   * 4xx e `pn` vazio seguem `null`.
    */
-  async resolvePhoneForLid(session: string, lid: string): Promise<string | null> {
+  async resolvePhoneForLid(
+    session: string,
+    lid: string,
+    opts: { falhaLanca?: boolean } = {},
+  ): Promise<string | null> {
     try {
       const res = await this.fetchComTeto(
         `${this.baseUrl}/api/${encodeURIComponent(session)}/lids/${encodeURIComponent(lid)}`,
         { headers: { "X-Api-Key": this.apiKey } },
       );
+      if (res.status >= 500 && opts.falhaLanca) throw new Error(`waha_lid_${res.status}`);
       if (!res.ok) return null;
       const body = (await res.json()) as { pn?: string | null };
       // `595981402525@c.us` → `+595981402525`. O sufixo é endereçamento do
@@ -930,7 +940,8 @@ export class WahaClient {
       if (!pn) return null;
       const digitos = String(pn).split("@")[0]?.replace(/\D/g, "") ?? "";
       return digitos.length >= 8 ? `+${digitos}` : null;
-    } catch {
+    } catch (err) {
+      if (opts.falhaLanca) throw err;
       return null;
     }
   }
