@@ -113,7 +113,7 @@ export const DICIONARIO: Traducoes = {
   "Feriados próprios da empresa": { es: "Feriados propios de la empresa" },
   "Nenhum feriado próprio cadastrado.": { es: "Ningún feriado propio registrado." },
   "Aniversário de Brasília": { es: "Aniversario de Brasilia" },
-  "Salvar feriados": { es: "Guardar feriados" },
+  "Aplicar feriados": { es: "Aplicar feriados" },
   "Feriados salvos.": { es: "Feriados guardados." },
   "Não foi possível salvar os feriados.": { es: "No fue posible guardar los feriados." },
   "Informe a data e o nome do feriado.": { es: "Informa la fecha y el nombre del feriado." },

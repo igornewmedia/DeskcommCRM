@@ -123,7 +123,7 @@ export function FeriadosDaEmpresaForm({ initial }: { initial: ConfigDeFeriados }
         </div>
       </div>
       <Button type="button" size="sm" disabled={isPending} onClick={salvar} data-testid="salvar-feriados">
-        {t("Salvar feriados")}
+        {t("Aplicar feriados")}
       </Button>
     </Card>
   );
