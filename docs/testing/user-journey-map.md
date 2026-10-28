@@ -4161,7 +4161,7 @@ turno começa do zero" é medido em `tests/invariants/reiniciar-memoria-da-ia.te
 
 Configurações › Empresa › card "Feriados". Provado pela tela em ambiente local
 (build de produção na porta 3001): ligar "Informar feriados ao agente de IA",
-cadastrar 21/04/2026 "Aniversário de Brasília" e "Salvar feriados" gravou
+cadastrar 21/04/2026 "Aniversário de Brasília" e "Aplicar feriados" gravou
 `organizations.settings.feriados` — `evidence/feriados-no-agora/01-card-feriados.jpg`.
 O bloco `## Agora` montado com a leitura real do banco (`feriadosDaOrganizacao`)
 diz, no dia 20, "Amanhã é feriado" e pula o 21 no próximo dia útil, e no dia 21
