@@ -19695,7 +19695,6 @@ export const DICIONARIO: Traducoes = {
     es: "Parámetro no válido.",
   },
   // Ferramentas HTTP dos agentes (migration 9002).
-  "Ferramentas": { es: "Herramientas" },
   "Endereços de outros sistemas que este agente pode consultar ou acionar durante a conversa. A mesma ferramenta serve a vários agentes.": { es: "Direcciones de otros sistemas que este agente puede consultar o accionar durante la conversación. La misma herramienta sirve a varios agentes." },
   "Ver todas e o histórico": { es: "Ver todas y el historial" },
   "Histórico de chamadas": { es: "Historial de llamadas" },

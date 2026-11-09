@@ -50,7 +50,6 @@ interface Rascunho {
   custo: string;
   quantidade: string;
   controla_estoque: boolean;
-  descricao: string;
 }
 
 const VAZIO: Rascunho = {
@@ -65,7 +64,6 @@ const VAZIO: Rascunho = {
   custo: "",
   quantidade: "0",
   controla_estoque: true,
-  descricao: "",
 };
 
 function doRascunho(
@@ -90,7 +88,6 @@ function doRascunho(
     custo_cents,
     controla_estoque: r.controla_estoque,
     quantidade: Number(r.quantidade) || 0,
-    ...(r.descricao.trim() ? { descricao: r.descricao.trim() } : {}),
   };
 }
 
@@ -542,16 +539,6 @@ export function ProdutosClient({
                 maxLength={60}
                 className="mt-1 h-9 w-full rounded-md border px-3"
                 data-testid="produto-capacidade"
-              />
-            </label>
-            <label className="text-sm sm:col-span-2">
-              {t("Descrição")}
-              <textarea
-                value={rascunho.descricao}
-                onChange={(e) => setRascunho({ ...rascunho, descricao: e.target.value })}
-                rows={2}
-                className="mt-1 w-full rounded-md border px-3 py-2"
-                data-testid="produto-descricao"
               />
             </label>
             <label className="text-sm">

@@ -140,6 +140,9 @@ const RESPOSTAS: Record<string, unknown> = {
   "/api/v1/ai/providers/anthropic/models": { data: { models: [] } },
   "/api/v1/mcp/tools": { data: { tools: [] } },
   "/api/v1/ai/followup-flows": { data: [] },
+  // Consultas das telas do fork no editor do agente.
+  "/api/v1/ai/http-tools": { data: [] },
+  "/api/v1/team/assignable": { data: [] },
 };
 const naoPrevistas: string[] = [];
 

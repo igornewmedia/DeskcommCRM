@@ -58,7 +58,8 @@ const TETO: Readonly<Record<string, { tokens: number; motivo: string }>> = {
   "crm_get_org_memory": { tokens: 114, motivo: BASE },
   "crm_save_org_memory": { tokens: 285, motivo: BASE },
   "crm_list_contact_orders": { tokens: 234, motivo: BASE },
-  "crm_search_products": { tokens: 362, motivo: BASE },
+  "crm_search_products": { tokens: 528, motivo: "fork: atributos personalizados do produto no filtro e no retorno (5002)" },
+  "crm_search_trade_in_devices": { tokens: 198, motivo: "fork: ferramenta de aparelhos na troca" },
   "crm_get_honorarios_contrato": { tokens: 253, motivo: BASE },
   "crm_list_honorarios_parcelas": { tokens: 222, motivo: BASE },
   "crm_preparar_proposta": { tokens: 132, motivo: BASE },
@@ -139,7 +140,7 @@ const TETO: Readonly<Record<string, { tokens: number; motivo: string }>> = {
 
 // 29952 até 2026-11-05; +142 com `ler_documento` (#4133), que só é montada no
 // modo `leitura_direta` — nunca junto de `search_knowledge`.
-const TETO_TOTAL = 30094;
+const TETO_TOTAL = 30458;
 
 const VARIANTE = "schedule_followup (com negócio)";
 

@@ -216,11 +216,13 @@ async function montarPush(admin: SupabaseClient, orgId: string, item: Aviso): Pr
     const motivo = (item.body ?? "").split("\n").find((l) => l.trim() !== "")?.trim();
     const quemEPorque = [nome, motivo].filter(Boolean).join(" — ");
     return {
-      title: traduzir("A IA passou uma conversa para você", idioma),
-      body: truncar(quemEPorque || fixo),
-      corpoSemPrevia: fixo,
-      tag,
-      href: destinoDaPassagem(item),
+      payload: {
+        title: traduzir("A IA passou uma conversa para você", idioma),
+        body: truncar(quemEPorque || fixo),
+        corpoSemPrevia: fixo,
+        tag,
+        href: destinoDaPassagem(item),
+      },
     };
   }
 
